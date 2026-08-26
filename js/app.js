@@ -4,6 +4,7 @@
  * Punto de entrada de la app. Se encarga de:
  *   - inicializar los módulos de cada pestaña al cargar la página
  *   - la navegación entre pestañas (barra inferior)
+ *   - registrar el service worker (PWA offline)
  *
  * Depende de todos los demás módulos, así que debe cargarse el último
  * en index.html.
@@ -36,11 +37,22 @@ const App = (function () {
     });
   }
 
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    // 'load' evita competir con la carga inicial de la página por ancho de banda
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch((err) => {
+        console.warn('No se pudo registrar el service worker:', err);
+      });
+    });
+  }
+
   function init() {
     bindBottomNav();
     Movimientos.init();
     Categorias.init();
     Grafica.init();
+    registerServiceWorker();
   }
 
   // ---- API pública del módulo ----
