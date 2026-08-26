@@ -1,64 +1,65 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app.
+ * Módulo de datos de la app — ahora conectado a la API real
+ * (Cloudflare Worker + D1) en vez de usar datos mock en memoria.
  *
- * Por ahora los datos viven en memoria (mock), pero todo el resto de la
- * app accede a ellos SOLO a través de las funciones que expone AppData.
- * Esto significa que en el Paso 10, cuando conectemos el backend real,
- * solo habrá que reescribir el interior de este fichero (por ejemplo,
- * que addMovimiento() haga un fetch() en vez de un unshift() en memoria)
- * y el resto de módulos (movimientos.js, categorias.js, grafica.js...)
- * no necesitarán ningún cambio.
+ * Patrón: init() carga categorías y movimientos reales una vez, y los deja
+ * en caché local (movimientos/categorias). Las funciones de lectura
+ * (getMovimientos, getCategorias...) siguen siendo síncronas y leen de esa
+ * caché, así que grafica.js, movimientos.js y categorias.js casi no
+ * necesitan cambios. Las funciones que escriben (addMovimiento,
+ * addCategoria, deleteCategoria, updateCategoriaPresupuesto) ahora son
+ * asíncronas (devuelven una Promise), porque hacen una llamada real a la
+ * API antes de actualizar la caché local.
  * -----------------------------------------------------------------------
  */
 
 const AppData = (function () {
 
-  // ---- estado interno (privado) ----
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
 
-  let movimientos = [
-    { desc: "Nómina Israel", cat: "Nómina", tipo: "income", importe: 1850.00 },
-    { desc: "Compra semanal Mercadona", cat: "Supermercado", tipo: "expense", importe: 96.40 },
-    { desc: "Factura luz", cat: "Casa y suministros", tipo: "expense", importe: 78.20 },
-    { desc: "Gasolina", cat: "Transporte", tipo: "expense", importe: 55.00 },
-    { desc: "Cine familiar", cat: "Ocio", tipo: "expense", importe: 32.00 },
-    { desc: "Paga extra", cat: "Nómina", tipo: "income", importe: 300.00 },
-    { desc: "Farmacia", cat: "Salud", tipo: "expense", importe: 18.90 },
-  ];
-
-  let categorias = [
-    { nombre: "Supermercado", color: "#B7912B", gastado: 412.30, presupuesto: 500, movimientos: 14 },
-    { nombre: "Casa y suministros", color: "#C1443D", gastado: 378.20, presupuesto: 400, movimientos: 6 },
-    { nombre: "Transporte", color: "#1E8A63", gastado: 210.00, presupuesto: 250, movimientos: 9 },
-    { nombre: "Ocio", color: "#6B5B95", gastado: 145.00, presupuesto: 150, movimientos: 5 },
-    { nombre: "Salud", color: "#3E7C8C", gastado: 88.90, presupuesto: 150, movimientos: 2 },
-    { nombre: "Colegio / niños", color: "#8C5E3E", gastado: 575.10, presupuesto: 600, movimientos: 11 },
-    { nombre: "Nómina", color: "#2F6E4E", gastado: 0, presupuesto: 0, movimientos: 2 },
-  ];
+  let movimientos = [];
+  let categorias = [];
 
   const colorPalette = ["#B7912B", "#C1443D", "#1E8A63", "#6B5B95", "#3E7C8C", "#8C5E3E", "#5A5F73", "#B0567E"];
 
-  // datos de la gráfica por año (mock). 2026 solo tiene datos hasta agosto
-  // por ser el año en curso.
-  const yearlyData = {
-    2024: {
-      labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-      ingresos: [1900,1900,1950,1950,2000,2200,2000,2000,1950,2000,2100,2450],
-      gastos:   [1500,1480,1600,1700,1550,1850,1750,1800,1600,1580,1780,2250]
-    },
-    2025: {
-      labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-      ingresos: [2000,2000,2050,2050,2100,2350,2100,2100,2050,2100,2200,2600],
-      gastos:   [1600,1550,1700,1800,1620,1980,1850,1950,1700,1680,1900,2400]
-    },
-    2026: {
-      labels: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago'],
-      ingresos: [2100,2100,2100,2150,2100,2400,2150,2150],
-      gastos:   [1650,1720,1780,1920,1650,2050,1890,1809.5]
+  // ---- helper interno para llamar a la API ----
+
+  async function apiFetch(path, options) {
+    const res = await fetch(API_BASE + path, Object.assign({
+      headers: { 'Content-Type': 'application/json' },
+    }, options));
+
+    let data = null;
+    try { data = await res.json(); } catch (_) { /* respuesta sin cuerpo JSON */ }
+
+    if (!res.ok) {
+      const err = new Error((data && data.message) || (data && data.error) || 'Error de conexión con el servidor');
+      err.status = res.status;
+      err.data = data;
+      throw err;
     }
-  };
-  const availableYears = [2024, 2025, 2026];
+    return data;
+  }
+
+  function esDelMesActual(fechaStr) {
+    const hoy = new Date();
+    const f = new Date(fechaStr);
+    return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
+  }
+
+  // ---- carga inicial ----
+
+  /** Se llama una vez al arrancar la app, antes de inicializar los demás módulos. */
+  async function init() {
+    const [cats, movs] = await Promise.all([
+      apiFetch('/api/categorias'),
+      apiFetch('/api/movimientos'),
+    ]);
+    categorias = cats;
+    movimientos = movs;
+  }
 
   // ---- movimientos ----
 
@@ -66,9 +67,29 @@ const AppData = (function () {
     return movimientos;
   }
 
-  function addMovimiento(mov) {
-    movimientos.unshift(mov);
-    return mov;
+  async function addMovimiento(mov) {
+    const nuevo = await apiFetch('/api/movimientos', {
+      method: 'POST',
+      body: JSON.stringify({
+        descripcion: mov.desc,
+        categoria: mov.cat,
+        tipo: mov.tipo,
+        importe: mov.importe,
+        fecha: mov.fecha,
+      }),
+    });
+
+    movimientos.unshift(nuevo);
+
+    const cat = categorias.find(c => c.nombre === nuevo.cat);
+    if (cat) {
+      cat.movimientos = (cat.movimientos || 0) + 1;
+      if (nuevo.tipo === 'expense' && esDelMesActual(nuevo.fecha)) {
+        cat.gastado = (cat.gastado || 0) + nuevo.importe;
+      }
+    }
+
+    return nuevo;
   }
 
   // ---- categorías ----
@@ -77,14 +98,12 @@ const AppData = (function () {
     return categorias;
   }
 
-  /** Categorías con gasto real o presupuesto asignado (para la pestaña de gasto mensual). */
   function getCategoriasConGasto() {
     return categorias
       .filter(c => c.gastado > 0 || c.presupuesto > 0)
       .sort((a, b) => b.gastado - a.gastado);
   }
 
-  /** Todas las categorías ordenadas alfabéticamente (para el selector y la administración). */
   function getCategoriasOrdenadas() {
     return [...categorias].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }
@@ -93,19 +112,48 @@ const AppData = (function () {
     return categorias.some(c => c.nombre.toLowerCase() === nombre.toLowerCase());
   }
 
-  function addCategoria({ nombre, color, presupuesto }) {
-    const nueva = { nombre, color, gastado: 0, presupuesto: presupuesto || 0, movimientos: 0 };
+  async function addCategoria({ nombre, color, presupuesto }) {
+    const nueva = await apiFetch('/api/categorias', {
+      method: 'POST',
+      body: JSON.stringify({ nombre, color, presupuesto: presupuesto || 0 }),
+    });
     categorias.push(nueva);
     return nueva;
   }
 
-  function deleteCategoria(nombre) {
+  /**
+   * Intenta borrar una categoría.
+   * - Sin `reassignTo`: si el servidor responde 409 porque tiene movimientos,
+   *   la promesa se rechaza con err.data.error === 'tiene_movimientos' y
+   *   err.data.count con el número de movimientos afectados.
+   * - Con `reassignTo`: el servidor mueve esos movimientos a la categoría
+   *   indicada y borra la original.
+   */
+  async function deleteCategoria(nombre, reassignTo) {
+    await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+      method: 'DELETE',
+      body: JSON.stringify(reassignTo ? { reassignTo } : {}),
+    });
+
     categorias = categorias.filter(c => c.nombre !== nombre);
+
+    if (reassignTo) {
+      movimientos.forEach(m => { if (m.cat === nombre) m.cat = reassignTo; });
+      const destino = categorias.find(c => c.nombre === reassignTo);
+      const origenMovs = movimientos.filter(m => m.cat === reassignTo).length; // aproximado, se recalcula en próxima carga
+      if (destino) destino.movimientos = origenMovs;
+    } else {
+      movimientos = movimientos.filter(m => m.cat !== nombre);
+    }
   }
 
-  function updateCategoriaPresupuesto(nombre, presupuesto) {
+  async function updateCategoriaPresupuesto(nombre, presupuesto) {
+    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+      method: 'PATCH',
+      body: JSON.stringify({ presupuesto: Math.max(0, presupuesto || 0) }),
+    });
     const cat = categorias.find(c => c.nombre === nombre);
-    if (cat) cat.presupuesto = Math.max(0, presupuesto || 0);
+    if (cat) cat.presupuesto = actualizado.presupuesto;
     return cat;
   }
 
@@ -113,45 +161,62 @@ const AppData = (function () {
     return colorPalette;
   }
 
-  // ---- gráfica ----
+  // ---- gráfica: calculada a partir de los movimientos reales ----
+
+  const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
   function getAvailableYears() {
-    return availableYears;
+    const years = new Set(movimientos.map(m => new Date(m.fecha).getFullYear()));
+    years.add(new Date().getFullYear());
+    return [...years].sort();
   }
 
   function getYearData(year) {
-    return yearlyData[year];
+    const hoy = new Date();
+    const esAnoActual = year === hoy.getFullYear();
+    const ultimoMes = esAnoActual ? hoy.getMonth() : 11;
+
+    const ingresos = new Array(ultimoMes + 1).fill(0);
+    const gastos = new Array(ultimoMes + 1).fill(0);
+
+    movimientos.forEach(m => {
+      const f = new Date(m.fecha);
+      if (f.getFullYear() !== year) return;
+      const mi = f.getMonth();
+      if (mi > ultimoMes) return;
+      if (m.tipo === 'income') ingresos[mi] += m.importe;
+      else gastos[mi] += m.importe;
+    });
+
+    return {
+      labels: MESES.slice(0, ultimoMes + 1),
+      ingresos,
+      gastos,
+    };
   }
 
-  /**
-   * Reparto de gasto por categoría de un mes concreto (mock).
-   * Distribuye el total gastado ese mes proporcionalmente al peso de
-   * gasto habitual de cada categoría, con una variación determinista
-   * (misma semilla = mismo resultado, para que no "baile" en cada render).
-   */
   function getCategoryBreakdown(year, monthIndex) {
-    const d = yearlyData[year];
-    const total = d.gastos[monthIndex];
-    const cats = categorias.filter(c => c.presupuesto > 0 || c.gastado > 0);
+    const items = {};
+    let total = 0;
 
-    const seed = year * 100 + monthIndex;
-    const seededRand = (s) => {
-      const x = Math.sin(s) * 10000;
-      return x - Math.floor(x);
-    };
+    movimientos.forEach(m => {
+      const f = new Date(m.fecha);
+      if (f.getFullYear() !== year || f.getMonth() !== monthIndex || m.tipo !== 'expense') return;
+      total += m.importe;
+      if (!items[m.cat]) {
+        const catInfo = categorias.find(c => c.nombre === m.cat);
+        items[m.cat] = { nombre: m.cat, color: (catInfo && catInfo.color) || '#5A5F73', gastado: 0 };
+      }
+      items[m.cat].gastado += m.importe;
+    });
 
-    const weights = cats.map((c, i) => (c.gastado || 60) * (0.7 + seededRand(seed + i * 7.3) * 0.6));
-    const sumW = weights.reduce((a, b) => a + b, 0) || 1;
-
-    const items = cats
-      .map((c, i) => ({ nombre: c.nombre, color: c.color, gastado: total * weights[i] / sumW }))
-      .sort((a, b) => b.gastado - a.gastado);
-
-    return { total, items };
+    const lista = Object.values(items).sort((a, b) => b.gastado - a.gastado);
+    return { total, items: lista };
   }
 
   // ---- API pública del módulo ----
   return {
+    init,
     getMovimientos,
     addMovimiento,
     getCategorias,
