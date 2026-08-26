@@ -3,6 +3,8 @@
  * -----------------------------------------------------------------------
  * Pestaña "Gráfica": ingresos frente a gastos por año, con:
  *   - navegación entre años (flechas)
+ *   - al entrar en la pestaña (o cambiar de año), se muestra automáticamente
+ *     el resumen del último mes disponible (el "mes en curso")
  *   - un toque sobre un mes → resumen (ingresos / gastos / ahorro neto)
  *   - doble toque sobre el mismo mes → detalle de gasto por categoría
  *
@@ -37,6 +39,12 @@ const Grafica = (function () {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  /** Índice del último mes con datos de un año (el "mes en curso" para ese año). */
+  function defaultMonthIndexFor(year) {
+    const d = AppData.getYearData(year);
+    return d.labels.length - 1;
   }
 
   // ---- gráfico ----
@@ -102,11 +110,11 @@ const Grafica = (function () {
 
     currentYear = years[newIdx];
     updateYearArrows();
-    document.getElementById('monthInfo').classList.add('hidden');
     lastTapIndex = null;
 
     UIHelpers.withOverlay(document.querySelector('.chart-wrap'), 400, () => {
       buildOrUpdateChart();
+      showMonthInfo(currentYear, defaultMonthIndexFor(currentYear));
     });
   }
 
@@ -191,14 +199,17 @@ const Grafica = (function () {
     updateYearArrows();
     UIHelpers.withOverlay(document.querySelector('.chart-wrap'), 300, () => {
       buildOrUpdateChart();
+      showMonthInfo(currentYear, defaultMonthIndexFor(currentYear));
     });
   }
 
-  /** Se llama cada vez que se entra en la pestaña, por si se quedó el drill-down abierto. */
+  /** Se llama cada vez que se entra en la pestaña: siempre enseña el mes en curso por defecto. */
   function reset() {
     closeDrilldown();
-    document.getElementById('monthInfo').classList.add('hidden');
     lastTapIndex = null;
+    if (currentYear !== null) {
+      showMonthInfo(currentYear, defaultMonthIndexFor(currentYear));
+    }
   }
 
   // ---- API pública del módulo ----
