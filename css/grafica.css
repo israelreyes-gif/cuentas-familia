@@ -1,0 +1,39 @@
+#graf-drill-screen{display:none;}
+
+.year-nav{
+  display:flex;align-items:center;justify-content:center;gap:18px;
+  margin-bottom:16px;
+}
+.year-arrow{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--rule);
+  background:#fff;color:var(--ink);font-size:16px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.year-arrow:disabled{opacity:.3;cursor:default;}
+.year-label{
+  font-family:'Fraunces',serif;font-weight:600;font-size:18px;min-width:52px;text-align:center;
+}
+.chart-note{
+  background:var(--paper-dim);border-radius:10px;padding:12px 14px;margin-bottom:16px;
+  font-size:12px;color:var(--ink-soft);line-height:1.5;
+}
+.month-info{
+  background:#fff;border:1px solid var(--rule);border-radius:var(--radius);
+  padding:14px 12px;margin-bottom:16px;
+}
+.month-info.hidden{display:none;}
+.month-info-title{
+  font-family:'Fraunces',serif;font-weight:600;font-size:14.5px;margin-bottom:10px;text-align:center;
+}
+.month-info-row{display:flex;}
+.month-info-item{flex:1;text-align:center;border-left:1px solid var(--rule);}
+.month-info-item:first-child{border-left:none;}
+.mi-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;margin-bottom:4px;}
+.mi-amt{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:var(--ink);}
+.mi-amt.income{color:var(--income);}
+.mi-amt.expense{color:var(--expense);}
+.chart-wrap{position:relative;height:250px;margin-bottom:6px;}
+.chart-legend{display:flex;gap:16px;justify-content:center;margin-top:14px;font-size:12px;font-weight:600;color:var(--ink-soft);flex-wrap:wrap;}
+.chart-legend span{display:flex;align-items:center;gap:6px;}
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.legend-line{width:14px;height:2px;display:inline-block;}
