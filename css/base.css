@@ -13,32 +13,34 @@
   --radius:14px;
 }
 *{box-sizing:border-box;}
+html{height:100%;}
 
 /*
- * La app ocupa toda la pantalla del dispositivo real (nada de marco de
- * "maqueta de móvil": eso solo tenía sentido para las vistas previas en
- * escritorio). Bloqueamos además cualquier pellizco de zoom, arrastre en
+ * En vez de calcular la altura con 100vh/100dvh (poco fiable en una PWA
+ * instalada, donde puede dejar un hueco al final), anclamos el body
+ * directamente a los 4 bordes reales de la pantalla con position:fixed.
+ * Así .phone (con height:100%) siempre ocupa exactamente el espacio
+ * visible de verdad, sin huecos ni de más ni de menos.
+ *
+ * De paso, esto bloquea cualquier pellizco de zoom, arrastre en
  * horizontal o rebote elástico de la página completa; solo el contenido
  * interior de cada pestaña (.view, más abajo) puede moverse, y solo
  * verticalmente.
  */
-html,body{
+body{
+  position:fixed;
+  inset:0;
   margin:0;
-  padding:0;
-  height:100%;
   overflow:hidden;
   overscroll-behavior:none;
   touch-action:pan-y;
   background:var(--paper);
-}
-body{
   font-family:'Inter',sans-serif;
   color:var(--ink);
 }
 .phone{
   width:100%;
-  height:100vh;
-  height:100dvh; /* mejor soporte de la barra de direcciones dinámica en móvil */
+  height:100%;
   background:var(--paper);
   display:flex;
   flex-direction:column;
