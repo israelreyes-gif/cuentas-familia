@@ -1,0 +1,8 @@
+name = "cuentas-familia-api"
+main = "index.js"
+compatibility_date = "2024-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cuentas-familia-db"
+database_id = "61ec2b37-c5b9-46d3-98aa-649ddd89b333"
