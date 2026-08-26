@@ -5,6 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Cuentas de casa</title>
 
+<!--
+  Mide la altura VISUAL real de la pantalla (no la del viewport de diseño,
+  que en iOS Safari puede no coincidir con lo que se ve de verdad cuando
+  la barra del navegador está visible) y la expone como variable CSS.
+  Se actualiza en cada cambio de tamaño real, así el hueco inferior no
+  puede volver a aparecer.
+-->
+<script>
+  (function () {
+    function setAppHeight() {
+      var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', h + 'px');
+    }
+    setAppHeight();
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', setAppHeight);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', setAppHeight);
+    }
+  })();
+</script>
+
 <!-- PWA: manifest, tema e iconos -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F2A24">
