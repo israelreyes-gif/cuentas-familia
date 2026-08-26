@@ -69,36 +69,40 @@ const Movimientos = (function () {
     const amountInput = document.getElementById('amountInput');
     const descInput = document.getElementById('descInput');
     const catSelect = document.getElementById('categorySelect');
+    const dateInput = document.querySelector('#view-mov input[type="date"]');
 
     const tipo = document.getElementById('btnExpense').classList.contains('selected') ? 'expense' : 'income';
     const amountVal = parseFloat(amountInput.value) || (tipo === 'income' ? 100 : 25);
     const descVal = descInput.value.trim() || (tipo === 'income' ? 'Ingreso' : 'Gasto');
     const catVal = catSelect.value;
+    const fechaVal = (dateInput && dateInput.value) || new Date().toISOString().slice(0, 10);
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner on-dark"></span> Guardando...');
 
-    // simula la latencia de una llamada real; en el Paso 10 aquí irá el fetch()
-    setTimeout(() => {
-      AppData.addMovimiento({ desc: descVal, cat: catVal, tipo, importe: amountVal });
+    AppData.addMovimiento({ desc: descVal, cat: catVal, tipo, importe: amountVal, fecha: fechaVal })
+      .then(() => {
+        UIHelpers.withOverlay(document.getElementById('ledgerList'), 250, () => {
+          renderLedgerList();
+        });
 
-      UIHelpers.withOverlay(document.getElementById('ledgerList'), 250, () => {
-        renderLedgerList();
-      });
-
-      UIHelpers.setButtonLoading(btn, true, '✓ Guardado');
-      setTimeout(() => {
+        UIHelpers.setButtonLoading(btn, true, '✓ Guardado');
+        setTimeout(() => {
+          UIHelpers.setButtonLoading(btn, false);
+          amountInput.value = '';
+          descInput.value = '';
+        }, 800);
+      })
+      .catch((err) => {
         UIHelpers.setButtonLoading(btn, false);
-        amountInput.value = '';
-        descInput.value = '';
-      }, 800);
-    }, 650);
+        alert(err.message || 'No se pudo guardar el movimiento. Comprueba tu conexión.');
+      });
   }
 
   // ---- arranque del módulo ----
 
   function init() {
     renderCategorySelect();
-    UIHelpers.withOverlay(document.getElementById('ledgerList'), 500, () => {
+    UIHelpers.withOverlay(document.getElementById('ledgerList'), 300, () => {
       renderLedgerList();
     });
   }
