@@ -38,8 +38,10 @@
 .manage-row .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);}
 .budget-field{position:relative;flex-shrink:0;}
 .budget-field input{
-  width:74px;border:1px solid var(--rule);background:#fff;border-radius:8px;
-  padding:6px 8px 6px 18px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink);
+  /* font-size 16px a propósito: por debajo de eso, iOS hace zoom automático
+     al tocar el campo, lo que desplaza toda la página */
+  width:86px;border:1px solid var(--rule);background:#fff;border-radius:8px;
+  padding:6px 8px 6px 20px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--ink);
 }
 .budget-field::before{
   content:"€";position:absolute;left:8px;top:50%;transform:translateY(-50%);
