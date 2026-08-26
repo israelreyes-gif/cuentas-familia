@@ -15,8 +15,10 @@
 *{box-sizing:border-box;}
 
 /*
- * Bloqueamos la página entera: ni pellizco de zoom, ni arrastre en
- * horizontal, ni rebote elástico al hacer scroll. Solo el contenido
+ * La app ocupa toda la pantalla del dispositivo real (nada de marco de
+ * "maqueta de móvil": eso solo tenía sentido para las vistas previas en
+ * escritorio). Bloqueamos además cualquier pellizco de zoom, arrastre en
+ * horizontal o rebote elástico de la página completa; solo el contenido
  * interior de cada pestaña (.view, más abajo) puede moverse, y solo
  * verticalmente.
  */
@@ -27,32 +29,27 @@ html,body{
   overflow:hidden;
   overscroll-behavior:none;
   touch-action:pan-y;
+  background:var(--paper);
 }
 body{
-  background:var(--ink);
   font-family:'Inter',sans-serif;
   color:var(--ink);
-  display:flex;
-  justify-content:center;
-  padding:24px 12px;
 }
 .phone{
   width:100%;
-  max-width:420px;
+  height:100vh;
+  height:100dvh; /* mejor soporte de la barra de direcciones dinámica en móvil */
   background:var(--paper);
-  border-radius:28px;
-  overflow:hidden;
-  box-shadow:0 30px 60px rgba(0,0,0,0.45);
   display:flex;
   flex-direction:column;
-  height:820px;
   position:relative;
+  overflow:hidden;
 }
 
 /* ---- contenedor de cada pestaña ---- */
 .view{
   display:none;flex:1;flex-direction:column;padding:20px;
-  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
 }
 .view.active{display:flex;}
