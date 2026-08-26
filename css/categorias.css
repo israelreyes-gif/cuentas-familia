@@ -57,3 +57,23 @@
   padding:4px 6px;line-height:1;
 }
 .delete-btn:disabled{opacity:.6;cursor:default;}
+
+/* ---- reasignación al borrar categorías con movimientos ---- */
+.reassign-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 0;border-bottom:1px dashed var(--rule);
+  font-size:12px;
+}
+.reassign-note{color:var(--ink-soft);}
+.reassign-select{
+  border:1px solid var(--rule);border-radius:8px;padding:5px 8px;
+  font-family:'Inter',sans-serif;font-size:12px;background:#fff;color:var(--ink);
+}
+.reassign-confirm{
+  background:var(--ink);color:var(--paper);border:none;border-radius:8px;
+  padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;
+}
+.reassign-cancel{
+  background:none;border:none;color:var(--ink-soft);font-size:11.5px;
+  cursor:pointer;text-decoration:underline;
+}
