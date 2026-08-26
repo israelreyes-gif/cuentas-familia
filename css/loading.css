@@ -1,0 +1,13 @@
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.spinner{
+  display:inline-block;width:15px;height:15px;border-radius:50%;
+  border:2px solid var(--rule);border-top-color:var(--gold);
+  animation:spin .65s linear infinite;vertical-align:middle;flex-shrink:0;
+}
+.spinner.on-dark{border-color:rgba(251,247,238,.3);border-top-color:var(--gold);}
+.loading-overlay{
+  position:absolute;inset:0;background:rgba(251,247,238,.82);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:inherit;z-index:6;
+}
+#ledgerList,#catSpendList,#drillList,.chart-wrap{position:relative;min-height:40px;}
