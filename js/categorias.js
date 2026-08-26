@@ -4,14 +4,9 @@
  * Pestaña "Categorías": gasto del mes por categoría + administración
  * (añadir, editar presupuesto, eliminar).
  *
- * Depende de:
- *   - AppData     (js/data.js)        → leer/guardar categorías
- *   - UIHelpers   (js/ui-helpers.js)  → spinners y overlays de carga
- *   - Movimientos (js/movimientos.js) → SOLO para refrescar el <select>
- *     de categorías del formulario de movimientos cuando se añade,
- *     edita o borra una categoría aquí. Es la única dependencia cruzada
- *     entre módulos de pestaña; por eso en index.html movimientos.js
- *     debe cargarse antes que categorias.js.
+ * Al borrar una categoría con movimientos asociados, el servidor devuelve
+ * un 409 y pide una categoría de destino: aquí se muestra un desplegable
+ * en línea para elegirla, tal como se decidió en el plan.
  * -----------------------------------------------------------------------
  */
 
@@ -25,14 +20,12 @@ const Categorias = (function () {
     return valor.toFixed(2).replace('.', ',') + ' €';
   }
 
-  /** Evita inyectar HTML si el nombre de categoría contiene < > etc. */
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
 
-  /** Escapa comillas simples para poder meter el nombre dentro de un onclick="...('nombre')". */
   function escapeJsString(str) {
     return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
@@ -143,33 +136,98 @@ const Categorias = (function () {
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    setTimeout(() => {
-      AppData.addCategoria({ nombre, color: selectedColor, presupuesto });
-      input.value = '';
-      budgetInput.value = '';
-
-      renderManageList();
-      Movimientos.renderCategorySelect();
-      UIHelpers.setButtonLoading(btn, false);
-    }, 550);
+    AppData.addCategoria({ nombre, color: selectedColor, presupuesto })
+      .then(() => {
+        input.value = '';
+        budgetInput.value = '';
+        renderManageList();
+        Movimientos.renderCategorySelect();
+      })
+      .catch((err) => {
+        input.style.borderColor = 'var(--expense)';
+        alert(err.message || 'No se pudo crear la categoría.');
+      })
+      .finally(() => {
+        UIHelpers.setButtonLoading(btn, false);
+      });
   }
 
   function deleteCategory(nombre, btn) {
     if (btn) UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    setTimeout(() => {
-      AppData.deleteCategoria(nombre);
-      renderManageList();
-      renderSpendList();
-      Movimientos.renderCategorySelect();
-    }, 400);
+    AppData.deleteCategoria(nombre)
+      .then(() => {
+        renderManageList();
+        renderSpendList();
+        Movimientos.renderCategorySelect();
+      })
+      .catch((err) => {
+        if (err.data && err.data.error === 'tiene_movimientos') {
+          showReassignPrompt(nombre, err.data.count, btn);
+        } else {
+          if (btn) UIHelpers.setButtonLoading(btn, false);
+          alert(err.message || 'No se pudo borrar la categoría.');
+        }
+      });
+  }
+
+  /** Muestra un desplegable en línea para elegir a qué categoría mover los movimientos. */
+  function showReassignPrompt(nombre, count, btn) {
+    if (btn) UIHelpers.setButtonLoading(btn, false);
+    const row = btn ? btn.closest('.manage-row') : null;
+    if (!row) return;
+
+    const otras = AppData.getCategoriasOrdenadas().filter(c => c.nombre !== nombre);
+    if (otras.length === 0) {
+      alert('No hay otra categoría a la que mover estos movimientos. Crea una nueva antes de borrar esta.');
+      return;
+    }
+
+    row.insertAdjacentHTML('afterend', `
+      <div class="reassign-row">
+        <span class="reassign-note">${count} movimiento(s). Mover a:</span>
+        <select class="reassign-select">
+          ${otras.map(c => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
+        </select>
+        <button class="reassign-confirm" onclick="Categorias.confirmReassignDelete('${escapeJsString(nombre)}', this)">Mover y borrar</button>
+        <button class="reassign-cancel" onclick="Categorias.cancelReassign(this)">Cancelar</button>
+      </div>
+    `);
+  }
+
+  function cancelReassign(btn) {
+    const row = btn.closest('.reassign-row');
+    if (row) row.remove();
+  }
+
+  function confirmReassignDelete(nombre, btn) {
+    const row = btn.closest('.reassign-row');
+    const select = row.querySelector('.reassign-select');
+    const destino = select.value;
+
+    UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
+
+    AppData.deleteCategoria(nombre, destino)
+      .then(() => {
+        renderManageList();
+        renderSpendList();
+        Movimientos.renderCategorySelect();
+      })
+      .catch((err) => {
+        UIHelpers.setButtonLoading(btn, false);
+        alert(err.message || 'No se pudo mover y borrar la categoría.');
+      });
   }
 
   function updateBudget(nombre, valor, inputEl) {
-    UIHelpers.withFieldLoading(inputEl, 450, () => {
-      AppData.updateCategoriaPresupuesto(nombre, parseFloat(valor));
-      renderSpendList();
-    });
+    UIHelpers.withFieldLoading(inputEl, 300, () => {});
+    AppData.updateCategoriaPresupuesto(nombre, parseFloat(valor))
+      .then(() => {
+        renderSpendList();
+      })
+      .catch((err) => {
+        alert(err.message || 'No se pudo actualizar el presupuesto.');
+      });
   }
 
   // ---- arranque del módulo ----
@@ -177,9 +235,7 @@ const Categorias = (function () {
   function init() {
     buildColorSwatches();
     renderManageList();
-    UIHelpers.withOverlay(document.getElementById('catSpendList'), 300, () => {
-      renderSpendList();
-    });
+    renderSpendList();
   }
 
   // ---- API pública del módulo ----
@@ -192,6 +248,8 @@ const Categorias = (function () {
     showCatScreen,
     addCategory,
     deleteCategory,
+    cancelReassign,
+    confirmReassignDelete,
     updateBudget,
   };
 
