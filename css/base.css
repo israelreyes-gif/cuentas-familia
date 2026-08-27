@@ -16,19 +16,19 @@
 html{height:100%;}
 
 /*
- * En vez de calcular la altura con 100vh/100dvh o solo con
- * position:fixed;inset:0 (que en iOS Safari puede seguir calculándose
- * contra el viewport de diseño y no el visual, dejando un hueco), usamos
- * la altura real medida por JavaScript en index.html (--app-height).
- * De paso, bloqueamos cualquier pellizco de zoom, arrastre en horizontal
- * o rebote elástico de la página completa; solo el contenido interior de
- * cada pestaña (.view, más abajo) puede moverse, y solo verticalmente.
+ * 100dvh (dynamic viewport height) es la unidad pensada exactamente para
+ * este problema: refleja la altura VISIBLE real del dispositivo, sin el
+ * bug de iOS en modo PWA instalada donde el cálculo por JavaScript
+ * (visualViewport.height) a veces se queda corto y no se recalcula.
+ * Mantenemos 100vh como fallback para navegadores muy antiguos que no
+ * soporten dvh (ahí no habría PWA instalada, así que no es crítico).
  */
 body{
   position:fixed;
   top:0;left:0;
   width:100%;
-  height:var(--app-height, 100vh);
+  height:100vh;
+  height:100dvh;
   margin:0;
   overflow:hidden;
   overscroll-behavior:none;
