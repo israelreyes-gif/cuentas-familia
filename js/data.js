@@ -1,15 +1,14 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app — ahora conectado a la API real
+ * Módulo de datos de la app — conectado a la API real
  * (Cloudflare Worker + D1) en vez de usar datos mock en memoria.
  *
  * Patrón: init() carga categorías y movimientos reales una vez, y los deja
  * en caché local (movimientos/categorias). Las funciones de lectura
  * (getMovimientos, getCategorias...) siguen siendo síncronas y leen de esa
- * caché, así que grafica.js, movimientos.js y categorias.js casi no
- * necesitan cambios. Las funciones que escriben (addMovimiento,
- * addCategoria, deleteCategoria, updateCategoriaPresupuesto) ahora son
+ * caché. Las funciones que escriben (addMovimiento, deleteMovimiento,
+ * addCategoria, deleteCategoria, updateCategoriaPresupuesto) son
  * asíncronas (devuelven una Promise), porque hacen una llamada real a la
  * API antes de actualizar la caché local.
  * -----------------------------------------------------------------------
@@ -51,7 +50,6 @@ const AppData = (function () {
 
   // ---- carga inicial ----
 
-  /** Se llama una vez al arrancar la app, antes de inicializar los demás módulos. */
   async function init() {
     const [cats, movs] = await Promise.all([
       apiFetch('/api/categorias'),
@@ -90,6 +88,23 @@ const AppData = (function () {
     }
 
     return nuevo;
+  }
+
+  async function deleteMovimiento(id) {
+    await apiFetch('/api/movimientos/' + id, { method: 'DELETE' });
+
+    const borrado = movimientos.find(m => m.id === id);
+    movimientos = movimientos.filter(m => m.id !== id);
+
+    if (borrado) {
+      const cat = categorias.find(c => c.nombre === borrado.cat);
+      if (cat) {
+        cat.movimientos = Math.max(0, (cat.movimientos || 0) - 1);
+        if (borrado.tipo === 'expense' && esDelMesActual(borrado.fecha)) {
+          cat.gastado = Math.max(0, (cat.gastado || 0) - borrado.importe);
+        }
+      }
+    }
   }
 
   // ---- categorías ----
@@ -139,9 +154,6 @@ const AppData = (function () {
 
     if (reassignTo) {
       movimientos.forEach(m => { if (m.cat === nombre) m.cat = reassignTo; });
-      const destino = categorias.find(c => c.nombre === reassignTo);
-      const origenMovs = movimientos.filter(m => m.cat === reassignTo).length; // aproximado, se recalcula en próxima carga
-      if (destino) destino.movimientos = origenMovs;
     } else {
       movimientos = movimientos.filter(m => m.cat !== nombre);
     }
@@ -219,6 +231,7 @@ const AppData = (function () {
     init,
     getMovimientos,
     addMovimiento,
+    deleteMovimiento,
     getCategorias,
     getCategoriasConGasto,
     getCategoriasOrdenadas,
