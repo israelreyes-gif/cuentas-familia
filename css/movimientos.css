@@ -32,3 +32,8 @@
 .ledger-amt{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;white-space:nowrap;}
 .ledger-amt.income{color:var(--income);}
 .ledger-amt.expense{color:var(--expense);}
+.ledger-delete{
+  background:none;border:none;color:var(--rule);font-size:14px;cursor:pointer;
+  padding:4px 2px 4px 8px;line-height:1;flex-shrink:0;
+}
+.ledger-delete:active{color:var(--expense);}
