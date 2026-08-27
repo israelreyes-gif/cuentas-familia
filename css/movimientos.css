@@ -16,7 +16,6 @@
 }
 .save-btn:active{opacity:.85;}
 .save-btn:disabled{opacity:.85;cursor:default;}
-.save-btn.secondary{background:var(--gold);color:var(--ink);}
 
 .ledger-heading{
   font-family:'Fraunces',serif;font-size:14.5px;font-weight:600;margin:22px 0 8px;
