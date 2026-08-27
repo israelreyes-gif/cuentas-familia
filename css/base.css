@@ -14,15 +14,6 @@
 }
 *{box-sizing:border-box;}
 
-/*
- * En una PWA instalada en iOS, la franja física reservada para el "home
- * indicator" no la pinta ningún elemento interno (por muy alto que sea
- * .phone) — la pinta directamente el color de fondo de <body>. Por eso
- * el fondo de body tiene que coincidir con el color de la barra que
- * toca ese borde (.bottom-nav, --paper-dim) y no con el color general
- * de la app (--paper): así, aunque esa franja la pinte body y no la
- * barra, es del mismo tono y no se ve ninguna línea.
- */
 html,body{
   height:100%;
   margin:0;
@@ -44,7 +35,6 @@ html,body{
   overflow:hidden;
 }
 
-/* ---- contenedor de cada pestaña ---- */
 .view{
   display:none;flex:1;flex-direction:column;padding:20px;
   overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;
@@ -84,7 +74,6 @@ h2.section-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;mar
   gap:4px;
 }
 
-/* ---- controles de formulario compartidos ---- */
 label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;display:block;margin:12px 0 6px;}
 input[type=text],input[type=number],input[type=date],select{
   width:100%;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:11px 12px;
