@@ -13,7 +13,7 @@
  * -----------------------------------------------------------------------
  */
 
-const CACHE_NAME = 'cuentas-casa-v1';
+const CACHE_NAME = 'cuentas-casa-v2';
 
 const CORE_ASSETS = [
   './',
