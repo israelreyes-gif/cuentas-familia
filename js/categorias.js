@@ -4,6 +4,10 @@
  * Pestaña "Categorías": gasto del mes por categoría + administración
  * (añadir, editar presupuesto, eliminar).
  *
+ * showCatScreen() pinta la pantalla correspondiente (gasto o administrar)
+ * cada vez que se entra en ella, en vez de solo una vez al arrancar la
+ * app — así siempre se ve lo último, sin tener que cerrar y reabrir.
+ *
  * Al borrar una categoría con movimientos asociados, el servidor devuelve
  * un 409 y pide una categoría de destino: aquí se muestra un desplegable
  * en línea para elegirla, tal como se decidió en el plan.
@@ -106,13 +110,18 @@ const Categorias = (function () {
 
   // ---- navegación entre las dos pantallas de esta pestaña ----
 
+  /** Cada vez que se entra en una de las dos pantallas, se pinta con los datos más recientes. */
   function showCatScreen(which) {
     document.getElementById('view-cat-spend').classList.remove('active');
     document.getElementById('view-cat-manage').classList.remove('active');
+
     if (which === 'manage') {
       document.getElementById('view-cat-manage').classList.add('active');
+      buildColorSwatches();
+      renderManageList();
     } else {
       document.getElementById('view-cat-spend').classList.add('active');
+      renderSpendList();
     }
   }
 
@@ -230,17 +239,8 @@ const Categorias = (function () {
       });
   }
 
-  // ---- arranque del módulo ----
-
-  function init() {
-    buildColorSwatches();
-    renderManageList();
-    renderSpendList();
-  }
-
   // ---- API pública del módulo ----
   return {
-    init,
     renderSpendList,
     renderManageList,
     buildColorSwatches,
