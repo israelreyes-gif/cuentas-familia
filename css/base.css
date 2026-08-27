@@ -13,15 +13,20 @@
   --radius:14px;
 }
 *{box-sizing:border-box;}
-html{height:100%;}
 
-body{
-  position:fixed;
-  top:0;left:0;
-  width:100%;
-  height:100vh;
-  height:100dvh;
+/*
+ * Encadenamos height:100% desde <html> hasta .phone, sin position:fixed
+ * ni vh/dvh. Es la técnica más fiable para una PWA instalada en iOS: al
+ * no haber barra de direcciones que aparezca/desaparezca (eso solo pasa
+ * en Safari normal), no hace falta ningún cálculo de viewport dinámico
+ * — y ese cálculo (vh/dvh o JavaScript) es precisamente lo que estaba
+ * dejando un hueco, porque calculaba una altura mayor que la pantalla
+ * real disponible en modo standalone.
+ */
+html,body{
+  height:100%;
   margin:0;
+  padding:0;
   overflow:hidden;
   overscroll-behavior:none;
   touch-action:pan-y;
@@ -100,9 +105,3 @@ select{
 
 .hidden{display:none !important;}
 .empty-note{font-size:12.5px;color:var(--ink-soft);padding:14px 0;text-align:center;}
-
-/* --- SOLO DIAGNÓSTICO: quitar en cuanto identifiquemos el problema --- */
-html{background:red !important;}
-body{background:blue !important;}
-.phone{background:green !important;}
-.bottom-nav{background:orange !important;}
