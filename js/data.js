@@ -142,7 +142,11 @@ const AppData = (function () {
    *   la promesa se rechaza con err.data.error === 'tiene_movimientos' y
    *   err.data.count con el número de movimientos afectados.
    * - Con `reassignTo`: el servidor mueve esos movimientos a la categoría
-   *   indicada y borra la original.
+   *   indicada y borra la original. Aquí, además de mover los movimientos
+   *   en la caché local, se suma su importe y cuenta al "gastado" y
+   *   "movimientos" ya guardados en la categoría de destino — si no se
+   *   hiciera esto, el total de esa categoría se quedaría desactualizado
+   *   en la pestaña Categorías hasta recargar la app entera.
    */
   async function deleteCategoria(nombre, reassignTo) {
     await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
@@ -153,7 +157,17 @@ const AppData = (function () {
     categorias = categorias.filter(c => c.nombre !== nombre);
 
     if (reassignTo) {
-      movimientos.forEach(m => { if (m.cat === nombre) m.cat = reassignTo; });
+      const destino = categorias.find(c => c.nombre === reassignTo);
+      movimientos.forEach(m => {
+        if (m.cat !== nombre) return;
+        m.cat = reassignTo;
+        if (destino) {
+          destino.movimientos = (destino.movimientos || 0) + 1;
+          if (m.tipo === 'expense' && esDelMesActual(m.fecha)) {
+            destino.gastado = (destino.gastado || 0) + m.importe;
+          }
+        }
+      });
     } else {
       movimientos = movimientos.filter(m => m.cat !== nombre);
     }
