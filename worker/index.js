@@ -8,6 +8,7 @@
  *   DELETE /api/categorias/:nombre    -> eliminar categoría (con reasignación si tiene movimientos)
  *   GET    /api/movimientos           -> lista de movimientos (con nombre/color de categoría)
  *   POST   /api/movimientos           -> crear movimiento { descripcion, categoria, tipo, importe, fecha }
+ *   DELETE /api/movimientos/:id       -> eliminar un movimiento
  *
  * Requiere un binding D1 llamado "DB" (Settings -> Bindings en el Worker).
  * -----------------------------------------------------------------------
@@ -69,6 +70,10 @@ export default {
       }
       if (path === '/api/movimientos' && method === 'POST') {
         return await createMovimiento(request, env);
+      }
+      const movMatch = path.match(/^\/api\/movimientos\/(\d+)$/);
+      if (movMatch && method === 'DELETE') {
+        return await deleteMovimiento(Number(movMatch[1]), env);
       }
 
       return error('Ruta no encontrada', 404);
@@ -238,4 +243,10 @@ async function createMovimiento(request, env) {
     importe,
     fecha,
   }, 201);
+}
+
+async function deleteMovimiento(id, env) {
+  const result = await env.DB.prepare('DELETE FROM movimientos WHERE id = ?').bind(id).run();
+  if (result.meta.changes === 0) return error('Movimiento no encontrado', 404);
+  return json({ ok: true });
 }
