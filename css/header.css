@@ -1,7 +1,7 @@
 .cover{
   background:var(--ink);
   color:var(--paper);
-  padding:calc(22px + env(safe-area-inset-top)) 22px 26px;
+  padding:22px 22px 26px;
   position:relative;
   flex-shrink:0;
 }
