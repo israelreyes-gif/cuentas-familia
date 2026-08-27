@@ -80,6 +80,18 @@ input[type=text],input[type=number],input[type=date],select{
   font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
 }
 
+/*
+ * .view es un contenedor flex (display:flex; flex-direction:column). Los
+ * hijos de un contenedor flex tienen por defecto min-width:auto, es decir,
+ * el navegador no los encoge por debajo del ancho que "quiere" su propio
+ * contenido. El control nativo de fecha de iOS tiene un ancho interno
+ * mayor que el resto de campos, así que sin esto se sale por la derecha
+ * del contenedor en vez de ajustarse al mismo ancho que los demás.
+ */
+input[type=date]{
+  min-width:0;
+}
+
 select{
   appearance:none;
   -webkit-appearance:none;
@@ -90,20 +102,6 @@ select{
   background-size:16px;
   padding-right:36px;
   cursor:pointer;
-}
-
-/*
- * iOS Safari desborda el texto del campo de fecha hacia la izquierda
- * porque, por dentro, alinea el valor con un elemento propio del
- * sistema que no respeta bien el padding del campo. En vez de quitarle
- * la apariencia nativa a todo el input (lo cual también le cambia el
- * alto), se apunta solo a ese elemento interno del valor y se alinea
- * a la izquierda con margen cero — el desbordamiento se corrige sin
- * tocar el resto de la caja.
- */
-input[type=date]::-webkit-date-and-time-value{
-  text-align:left;
-  margin:0;
 }
 
 .hidden{display:none !important;}
