@@ -3,15 +3,15 @@
   padding:6px 8px 0 8px;gap:6px;
 }
 .nav-btn{
-  flex:1;text-align:center;cursor:pointer;color:var(--ink-soft);
-  /*
-   * El espacio de seguridad del borde inferior (home indicator) va AQUÍ,
-   * dentro del propio botón, no como margen vacío después de la barra.
-   * Así el fondo del botón (y el pill dorado si está activo) se estira
-   * hasta el borde físico, aprovechando toda la pantalla, mientras el
-   * icono y el texto quedan arriba, en la zona cómoda para tocar.
-   */
-  padding:10px 0 calc(9px + env(safe-area-inset-bottom)) 0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:var(--ink-soft);
+  padding:8px 0 calc(8px + env(safe-area-inset-bottom)) 0;
+  min-height:52px;
   border-radius:12px 12px 0 0;
   border-top:3px solid transparent;
   transition:background .15s ease,color .15s ease;
