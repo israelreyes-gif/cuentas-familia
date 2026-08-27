@@ -3,8 +3,11 @@
  * -----------------------------------------------------------------------
  * Punto de entrada de la app. Se encarga de:
  *   - cargar los datos reales desde la API (AppData.init())
- *   - inicializar los módulos de cada pestaña una vez cargados los datos
  *   - la navegación entre pestañas (barra inferior)
+ *   - pintar cada pestaña SOLO cuando se muestra, no todas al arrancar:
+ *     así nunca se hace trabajo de más en una pestaña que el usuario
+ *     no ha llegado a abrir, y cada vez que se entra en una pestaña se
+ *     ve siempre lo último (sin tener que cerrar y volver a abrir la app)
  *   - registrar el service worker (PWA offline)
  * -----------------------------------------------------------------------
  */
@@ -15,14 +18,16 @@ const App = (function () {
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
     document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
 
-    if (name === 'cat') {
-      Categorias.showCatScreen('spend');
-      document.getElementById('view-cat-spend').classList.add('active');
-    } else if (name === 'mov') {
+    if (name === 'mov') {
       document.getElementById('view-mov').classList.add('active');
+      Movimientos.renderCategorySelect();
+      Movimientos.renderHeader();
+      Movimientos.renderLedgerList();
+    } else if (name === 'cat') {
+      Categorias.showCatScreen('spend');
     } else if (name === 'graf') {
       document.getElementById('view-graf').classList.add('active');
-      Grafica.reset();
+      Grafica.show();
     }
   }
 
@@ -45,11 +50,11 @@ const App = (function () {
     bindBottomNav();
     registerServiceWorker();
 
+    // Solo se inicializa la pestaña visible al arrancar (Movimiento).
+    // Categorías y Gráfica se pintan la primera vez que el usuario las abre.
     AppData.init()
       .then(() => {
         Movimientos.init();
-        Categorias.init();
-        Grafica.init();
       })
       .catch((err) => {
         console.error('No se pudieron cargar los datos:', err);
