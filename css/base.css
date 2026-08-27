@@ -15,13 +15,13 @@
 *{box-sizing:border-box;}
 
 /*
- * Encadenamos height:100% desde <html> hasta .phone, sin position:fixed
- * ni vh/dvh. Es la técnica más fiable para una PWA instalada en iOS: al
- * no haber barra de direcciones que aparezca/desaparezca (eso solo pasa
- * en Safari normal), no hace falta ningún cálculo de viewport dinámico
- * — y ese cálculo (vh/dvh o JavaScript) es precisamente lo que estaba
- * dejando un hueco, porque calculaba una altura mayor que la pantalla
- * real disponible en modo standalone.
+ * En una PWA instalada en iOS, la franja física reservada para el "home
+ * indicator" no la pinta ningún elemento interno (por muy alto que sea
+ * .phone) — la pinta directamente el color de fondo de <body>. Por eso
+ * el fondo de body tiene que coincidir con el color de la barra que
+ * toca ese borde (.bottom-nav, --paper-dim) y no con el color general
+ * de la app (--paper): así, aunque esa franja la pinte body y no la
+ * barra, es del mismo tono y no se ve ninguna línea.
  */
 html,body{
   height:100%;
@@ -30,7 +30,7 @@ html,body{
   overflow:hidden;
   overscroll-behavior:none;
   touch-action:pan-y;
-  background:var(--paper);
+  background:var(--paper-dim);
   font-family:'Inter',sans-serif;
   color:var(--ink);
 }
