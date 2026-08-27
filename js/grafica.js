@@ -8,6 +8,10 @@
  *   - un toque sobre un mes → resumen (ingresos / gastos / ahorro neto)
  *   - doble toque sobre el mismo mes → detalle de gasto por categoría
  *
+ * show() se llama cada vez que se entra en la pestaña (no solo la primera
+ * vez): siempre redibuja tanto el resumen numérico como las barras del
+ * gráfico con los datos más recientes de AppData.
+ *
  * Depende de:
  *   - AppData    (js/data.js)        → datos de la gráfica y desglose por categoría
  *   - UIHelpers  (js/ui-helpers.js)  → spinners y overlays de carga
@@ -191,31 +195,31 @@ const Grafica = (function () {
     document.getElementById('graf-chart-screen').classList.remove('hidden');
   }
 
-  // ---- arranque y reinicio del módulo ----
-
-  function init() {
-    const years = AppData.getAvailableYears();
-    currentYear = years[years.length - 1]; // el año más reciente, por defecto
+  /**
+   * Se llama cada vez que se entra en la pestaña Gráfica (no solo la
+   * primera vez). La primera vez elige el año más reciente por defecto;
+   * las siguientes veces mantiene el año que el usuario tuviera
+   * seleccionado. Siempre redibuja tanto las barras del gráfico como el
+   * resumen del mes con los datos más recientes.
+   */
+  function show() {
+    if (currentYear === null) {
+      const years = AppData.getAvailableYears();
+      currentYear = years[years.length - 1];
+    }
     updateYearArrows();
+    closeDrilldown();
+    lastTapIndex = null;
+
     UIHelpers.withOverlay(document.querySelector('.chart-wrap'), 300, () => {
       buildOrUpdateChart();
       showMonthInfo(currentYear, defaultMonthIndexFor(currentYear));
     });
   }
 
-  /** Se llama cada vez que se entra en la pestaña: siempre enseña el mes en curso por defecto. */
-  function reset() {
-    closeDrilldown();
-    lastTapIndex = null;
-    if (currentYear !== null) {
-      showMonthInfo(currentYear, defaultMonthIndexFor(currentYear));
-    }
-  }
-
   // ---- API pública del módulo ----
   return {
-    init,
-    reset,
+    show,
     changeYear,
     closeDrilldown,
   };
