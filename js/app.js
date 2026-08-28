@@ -76,20 +76,3 @@ const App = (function () {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
-
-// --- SOLO DIAGNÓSTICO: quitar después ---
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    const campos = {
-      'Importe': document.getElementById('amountInput'),
-      'Categoría': document.getElementById('categorySelect'),
-      'Descripción': document.getElementById('descInput'),
-      'Fecha': document.querySelector('#view-mov input[type="date"]'),
-    };
-    let msg = '';
-    for (const [nombre, el] of Object.entries(campos)) {
-      if (el) msg += `${nombre}: ${el.getBoundingClientRect().height.toFixed(1)}px\n`;
-    }
-    alert(msg);
-  }, 500);
-});
