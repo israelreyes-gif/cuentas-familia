@@ -80,6 +80,33 @@ input[type=text],input[type=number],select{
   font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
 }
 
+/*
+ * El campo de fecha va envuelto en un div .date-field (ver index.html).
+ * El aspecto de "tarjeta" (fondo blanco, borde, redondeado, padding) lo
+ * pone ese div, que sí es un elemento normal nuestro y no depende de
+ * nada de iOS. El input de dentro no lleva NINGÚN estilo forzado propio
+ * — ni appearance:none, ni altura, ni ancho — simplemente ocupa el
+ * espacio del div. Así se evita pelear con el renderizado nativo del
+ * control de fecha, que es lo que ha estado fallando en todos los
+ * intentos anteriores.
+ */
+.date-field{
+  border:1px solid var(--rule);
+  background:#fff;
+  border-radius:10px;
+  padding:11px 12px;
+}
+.date-field input[type=date]{
+  border:none;
+  background:transparent;
+  width:100%;
+  display:block;
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  color:var(--ink);
+  padding:0;
+}
+
 select{
   appearance:none;
   -webkit-appearance:none;
