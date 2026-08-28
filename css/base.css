@@ -75,28 +75,29 @@ h2.section-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;mar
 }
 
 label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;display:block;margin:12px 0 6px;}
-input[type=text],input[type=number],input[type=date],select{
+input[type=text],input[type=number],select{
   width:100%;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:11px 12px;
   font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
-  line-height:normal;
 }
 
 /*
- * Sin altura fija a mano: el campo de fecha ya comparte padding, borde y
- * tamaño de letra con los demás campos (regla de arriba), así que con el
- * renderizado nativo quitado debería medir lo mismo por sí solo. Lo único
- * que se iguala aparte es el line-height, porque Safari le da uno propio
- * por dentro a este campo en concreto que puede diferir del resto.
+ * Regla autocontenida para el campo de fecha, con todas sus propiedades
+ * propias en vez de heredar de la regla compartida de arriba y parchear
+ * encima — igual que se hizo con el campo de hora que ya funcionó bien
+ * a la primera en otra app.
  */
 input[type=date]{
   -webkit-appearance:none;
   appearance:none;
   width:100%;
-  min-width:0;
-}
-input[type=date]::-webkit-date-and-time-value{
-  text-align:left;
-  line-height:normal;
+  box-sizing:border-box;
+  padding:11px 12px;
+  border-radius:10px;
+  border:1px solid var(--rule);
+  background:#fff;
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  color:var(--ink);
 }
 
 select{
