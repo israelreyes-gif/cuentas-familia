@@ -81,15 +81,19 @@ input[type=text],input[type=number],input[type=date],select{
 }
 
 /*
- * .view es un contenedor flex (display:flex; flex-direction:column). Los
- * hijos de un contenedor flex tienen por defecto min-width:auto, es decir,
- * el navegador no los encoge por debajo del ancho que "quiere" su propio
- * contenido. El control nativo de fecha de iOS tiene un ancho interno
- * mayor que el resto de campos, así que sin esto se sale por la derecha
- * del contenedor en vez de ajustarse al mismo ancho que los demás.
+ * Dos causas distintas del mismo desbordamiento en iOS Safari:
+ * 1) Dentro de un contenedor flex (.view), los hijos no encogen por
+ *    debajo del ancho de su propio contenido a menos que se indique
+ *    min-width:0.
+ * 2) Fallo específico de WebKit en input[type=date]: ignora el "width"
+ *    normal y calcula su ancho a partir del contenido interno del
+ *    control nativo. La propiedad no estándar -webkit-min-logical-width
+ *    es la que WebKit sí respeta para forzar el ancho real en estos
+ *    campos — sin ella, el punto 1 por sí solo no basta.
  */
 input[type=date]{
   min-width:0;
+  -webkit-min-logical-width:100%;
 }
 
 select{
