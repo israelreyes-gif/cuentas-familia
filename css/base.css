@@ -81,19 +81,23 @@ input[type=text],input[type=number],input[type=date],select{
 }
 
 /*
- * Dos causas distintas del mismo desbordamiento en iOS Safari:
- * 1) Dentro de un contenedor flex (.view), los hijos no encogen por
- *    debajo del ancho de su propio contenido a menos que se indique
- *    min-width:0.
- * 2) Fallo específico de WebKit en input[type=date]: ignora el "width"
- *    normal y calcula su ancho a partir del contenido interno del
- *    control nativo. La propiedad no estándar -webkit-min-logical-width
- *    es la que WebKit sí respeta para forzar el ancho real en estos
- *    campos — sin ella, el punto 1 por sí solo no basta.
+ * Solución tomada directamente de "faro" (donde ya está probado que
+ * funciona) para este mismo problema: quitarle a iOS el renderizado
+ * nativo del control de fecha con appearance:none. Mis intentos
+ * anteriores (display:flex, -webkit-min-logical-width) forzaban el ancho
+ * pero SIN quitar el renderizado nativo, y mientras ese renderizado
+ * nativo siga activo, iOS sigue calculando el ancho a su manera y lo
+ * ignora. Quitándoselo, el campo pasa a comportarse como una caja
+ * normal que sí respeta width:100%, igual que los demás campos.
  */
 input[type=date]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
   min-width:0;
-  -webkit-min-logical-width:100%;
+}
+input[type=date]::-webkit-date-and-time-value{
+  text-align:left;
 }
 
 select{
