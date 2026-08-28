@@ -75,40 +75,22 @@ h2.section-title{font-family:'Fraunces',serif;font-size:19px;font-weight:600;mar
 }
 
 label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;display:block;margin:12px 0 6px;}
-input[type=text],input[type=number],select{
-  width:100%;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:11px 12px;
-  font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
-  line-height:19px;
-}
 
 /*
- * appearance:none le quita a iOS el cálculo de altura nativo que traía
- * el control de fecha "de fábrica" — no solo el aspecto visual. Sin eso,
- * la altura depende del interlineado interno de su contenido, que por
- * defecto es distinto al de un input de texto normal. Se fija el mismo
- * interlineado explícito (19px, el mismo que ahora tienen los demás
- * campos arriba) tanto en el campo como en la pieza interna donde
- * iOS pinta la fecha (::-webkit-datetime-edit), para que ambos midan
- * exactamente lo mismo en vez de depender de valores por defecto que
- * no coinciden entre sí.
+ * Altura fija e idéntica en los cuatro campos (texto, número, fecha,
+ * categoría), en vez de dejar que cada uno calcule la suya a partir de
+ * su propio interlineado interno — que es justo lo que ha estado
+ * fallando en el campo de fecha en iOS. Con box-sizing:border-box
+ * (global, arriba), esta altura ya incluye el padding y el borde.
  */
+input[type=text],input[type=number],input[type=date],select{
+  width:100%;height:48px;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:0 12px;
+  font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
+}
+
 input[type=date]{
   -webkit-appearance:none;
   appearance:none;
-  width:100%;
-  box-sizing:border-box;
-  padding:11px 12px;
-  border-radius:10px;
-  border:1px solid var(--rule);
-  background:#fff;
-  font-family:'Inter',sans-serif;
-  font-size:16px;
-  color:var(--ink);
-  line-height:19px;
-}
-input[type=date]::-webkit-datetime-edit{
-  line-height:19px;
-  padding:0;
 }
 
 select{
