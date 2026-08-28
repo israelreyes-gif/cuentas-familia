@@ -80,21 +80,13 @@ input[type=text],input[type=number],input[type=date],select{
   font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);
 }
 
-/*
- * Solución tomada directamente de "faro" (donde ya está probado que
- * funciona) para este mismo problema: quitarle a iOS el renderizado
- * nativo del control de fecha con appearance:none. Mis intentos
- * anteriores (display:flex, -webkit-min-logical-width) forzaban el ancho
- * pero SIN quitar el renderizado nativo, y mientras ese renderizado
- * nativo siga activo, iOS sigue calculando el ancho a su manera y lo
- * ignora. Quitándoselo, el campo pasa a comportarse como una caja
- * normal que sí respeta width:100%, igual que los demás campos.
- */
 input[type=date]{
   -webkit-appearance:none;
   appearance:none;
   width:100%;
   min-width:0;
+  height:46px;
+  box-sizing:border-box;
 }
 input[type=date]::-webkit-date-and-time-value{
   text-align:left;
