@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crear cuenta — Cuentas de casa</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1F2A24; --ink-soft:#334339; --paper:#FBF7EE; --rule:#C9BFA6;
+    --expense:#C1443D;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:var(--paper);font-family:'Inter',sans-serif;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;padding:24px;}
+  .card{width:100%;max-width:360px;}
+  h1{font-family:'Fraunces',serif;font-size:24px;margin:0 0 6px;}
+  p{font-size:13px;color:var(--ink-soft);margin:0 0 24px;}
+  label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;display:block;margin:14px 0 6px;}
+  input{width:100%;border:1px solid var(--rule);background:#fff;border-radius:10px;padding:11px 12px;font-size:16px;color:var(--ink);}
+  button{margin-top:22px;width:100%;background:var(--ink);color:var(--paper);border:none;border-radius:10px;padding:14px;font-weight:600;font-size:14.5px;cursor:pointer;}
+  button:disabled{opacity:.7;}
+  .msg{font-size:13px;margin-top:14px;min-height:18px;}
+  .msg.error{color:var(--expense);}
+  .msg.success{color:#1E8A63;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Crear cuenta</h1>
+    <p>Solo se permite una cuenta para toda la casa. Regístrala una vez y no vuelvas a usar esta página.</p>
+
+    <label>Usuario</label>
+    <input type="text" id="regUser" autocomplete="username">
+
+    <label>Contraseña</label>
+    <input type="password" id="regPass" autocomplete="new-password">
+
+    <button id="regBtn" onclick="registrar()">Crear cuenta</button>
+    <div class="msg" id="regMsg"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+
+    async function registrar() {
+      const user = document.getElementById('regUser').value.trim();
+      const pass = document.getElementById('regPass').value;
+      const btn = document.getElementById('regBtn');
+      const msg = document.getElementById('regMsg');
+      msg.textContent = '';
+      msg.className = 'msg';
+
+      if (!user || !pass) {
+        msg.textContent = 'Escribe usuario y contraseña.';
+        msg.className = 'msg error';
+        return;
+      }
+      if (pass.length < 6) {
+        msg.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+        msg.className = 'msg error';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Creando...';
+
+      try {
+        const res = await fetch(API_BASE + '/api/auth/registro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo crear la cuenta.');
+
+        msg.textContent = 'Cuenta creada. Ya puedes ir a la app e iniciar sesión.';
+        msg.className = 'msg success';
+        btn.textContent = 'Cuenta creada';
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = 'msg error';
+        btn.disabled = false;
+        btn.textContent = 'Crear cuenta';
+      }
+    }
+  </script>
+</body>
+</html>
