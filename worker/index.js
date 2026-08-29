@@ -10,13 +10,14 @@
  *   POST   /api/categorias
  *   PATCH  /api/categorias/:nombre    -> acepta { presupuesto } y/o { fija }
  *   DELETE /api/categorias/:nombre
+ *   POST   /api/categorias/generar-fijos  -> genera ya los gastos fijos del mes (prueba manual)
  *   GET    /api/movimientos
  *   POST   /api/movimientos
  *   DELETE /api/movimientos/:id
  *
- * Cada petición autenticada renueva la sesión 7 días más desde ese
- * instante — por eso, mientras se use la app con cierta frecuencia, no
- * vuelve a pedir el login.
+ * Tarea programada (cron, ver wrangler.toml): el día 1 de cada mes crea
+ * automáticamente un gasto por cada categoría "fija", con su presupuesto
+ * como importe.
  *
  * Requiere un binding D1 llamado "DB" (Settings -> Bindings en el Worker).
  * -----------------------------------------------------------------------
@@ -24,6 +25,7 @@
 
 const ALLOWED_ORIGIN = 'https://israelreyes-gif.github.io';
 const SESSION_DAYS = 7;
+const DESC_GASTO_FIJO = 'Gasto fijo mensual';
 
 function corsHeaders() {
   return {
@@ -74,6 +76,9 @@ export default {
       if (path === '/api/categorias' && method === 'POST') {
         return await createCategoria(request, env);
       }
+      if (path === '/api/categorias/generar-fijos' && method === 'POST') {
+        return await generarFijosManual(env);
+      }
       const catMatch = path.match(/^\/api\/categorias\/([^/]+)$/);
       if (catMatch && method === 'PATCH') {
         return await updateCategoria(decodeURIComponent(catMatch[1]), request, env);
@@ -99,7 +104,53 @@ export default {
       return error('Error interno: ' + err.message, 500);
     }
   },
+
+  /** Se dispara automáticamente según el horario definido en wrangler.toml (día 1 de cada mes). */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(generarGastosFijos(env));
+  },
 };
+
+// ---------------------------------------------------------------------
+// gastos fijos automáticos
+// ---------------------------------------------------------------------
+
+/**
+ * Crea un gasto por cada categoría "fija" con presupuesto > 0, fechado el
+ * día 1 del mes en curso, usando el presupuesto como importe. No duplica
+ * si ya existe uno igual ese mes para esa categoría (comprueba antes de
+ * insertar), así es seguro llamarla más de una vez.
+ */
+async function generarGastosFijos(env) {
+  const hoy = new Date();
+  const primerDiaMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
+
+  const { results: fijas } = await env.DB.prepare(
+    'SELECT id, presupuesto FROM categorias WHERE fija = 1 AND presupuesto > 0'
+  ).all();
+
+  let creados = 0;
+  for (const cat of fijas) {
+    const yaExiste = await env.DB.prepare(
+      'SELECT id FROM movimientos WHERE categoria_id = ? AND fecha = ? AND descripcion = ?'
+    ).bind(cat.id, primerDiaMes, DESC_GASTO_FIJO).first();
+
+    if (yaExiste) continue;
+
+    await env.DB.prepare(
+      "INSERT INTO movimientos (descripcion, categoria_id, tipo, importe, fecha) VALUES (?, ?, 'expense', ?, ?)"
+    ).bind(DESC_GASTO_FIJO, cat.id, cat.presupuesto, primerDiaMes).run();
+    creados++;
+  }
+
+  return creados;
+}
+
+/** Endpoint manual para probar la generación de gastos fijos sin esperar al día 1. */
+async function generarFijosManual(env) {
+  const creados = await generarGastosFijos(env);
+  return json({ ok: true, creados, message: `Se generaron ${creados} gasto(s) fijo(s) para este mes.` });
+}
 
 // ---------------------------------------------------------------------
 // autenticación
@@ -243,7 +294,6 @@ async function createCategoria(request, env) {
   return json({ nombre, color, presupuesto, fija, gastado: 0, movimientos: 0 }, 201);
 }
 
-/** Actualiza presupuesto y/o fija — solo cambia los campos que vengan en el body. */
 async function updateCategoria(nombre, request, env) {
   const body = await request.json();
   const sets = [];
