@@ -21,6 +21,13 @@ const Movimientos = (function () {
     return div.innerHTML;
   }
 
+  /** Fecha de hoy en formato YYYY-MM-DD, en la hora local del dispositivo (no UTC). */
+  function getTodayISO() {
+    const hoy = new Date();
+    const offset = hoy.getTimezoneOffset() * 60000;
+    return new Date(hoy - offset).toISOString().slice(0, 10);
+  }
+
   function renderHeader() {
     const hoy = new Date();
     const movimientos = AppData.getMovimientos().filter(m => {
@@ -58,11 +65,12 @@ const Movimientos = (function () {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  /**
-   * Solo muestra categorías NO fijas. Empieza siempre en blanco (opción
-   * vacía primero) en vez de dejar la primera categoría seleccionada por
-   * defecto, para obligar a elegir una a propósito.
-   */
+  /** Rellena el campo Fecha con el día de hoy. Se llama cada vez que se entra en la pestaña. */
+  function resetDateField() {
+    const dateInput = document.getElementById('dateInput');
+    if (dateInput) dateInput.value = getTodayISO();
+  }
+
   function renderCategorySelect() {
     const select = document.getElementById('categorySelect');
     if (!select) return;
@@ -105,13 +113,13 @@ const Movimientos = (function () {
     const amountInput = document.getElementById('amountInput');
     const descInput = document.getElementById('descInput');
     const catSelect = document.getElementById('categorySelect');
-    const dateInput = document.querySelector('#view-mov input[type="date"]');
+    const dateInput = document.getElementById('dateInput');
 
     const tipo = document.getElementById('btnExpense').classList.contains('selected') ? 'expense' : 'income';
     const amountVal = parseFloat(amountInput.value);
     const descVal = descInput.value.trim();
     const catVal = catSelect.value;
-    const fechaVal = (dateInput && dateInput.value) || new Date().toISOString().slice(0, 10);
+    const fechaVal = (dateInput && dateInput.value) || getTodayISO();
 
     let huboError = false;
     if (!amountVal || amountVal <= 0) {
@@ -149,6 +157,7 @@ const Movimientos = (function () {
           amountInput.value = '';
           descInput.value = '';
           catSelect.value = '';
+          resetDateField();
         }, 800);
       })
       .catch((err) => {
@@ -175,6 +184,7 @@ const Movimientos = (function () {
 
   function init() {
     renderCategorySelect();
+    resetDateField();
     renderHeader();
     UIHelpers.withOverlay(document.getElementById('ledgerList'), 300, () => {
       renderLedgerList();
@@ -186,6 +196,7 @@ const Movimientos = (function () {
     renderLedgerList,
     renderCategorySelect,
     renderHeader,
+    resetDateField,
     setType,
     saveMovement,
     deleteMovement,
