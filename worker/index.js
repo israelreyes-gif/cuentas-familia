@@ -10,7 +10,6 @@
  *   POST   /api/categorias
  *   PATCH  /api/categorias/:nombre    -> acepta { presupuesto } y/o { fija }
  *   DELETE /api/categorias/:nombre
- *   POST   /api/categorias/generar-fijos  -> genera ya los gastos fijos del mes (prueba manual)
  *   GET    /api/movimientos
  *   POST   /api/movimientos
  *   DELETE /api/movimientos/:id
@@ -76,9 +75,6 @@ export default {
       if (path === '/api/categorias' && method === 'POST') {
         return await createCategoria(request, env);
       }
-      if (path === '/api/categorias/generar-fijos' && method === 'POST') {
-        return await generarFijosManual(env);
-      }
       const catMatch = path.match(/^\/api\/categorias\/([^/]+)$/);
       if (catMatch && method === 'PATCH') {
         return await updateCategoria(decodeURIComponent(catMatch[1]), request, env);
@@ -118,8 +114,7 @@ export default {
 /**
  * Crea un gasto por cada categoría "fija" con presupuesto > 0, fechado el
  * día 1 del mes en curso, usando el presupuesto como importe. No duplica
- * si ya existe uno igual ese mes para esa categoría (comprueba antes de
- * insertar), así es seguro llamarla más de una vez.
+ * si ya existe uno igual ese mes para esa categoría.
  */
 async function generarGastosFijos(env) {
   const hoy = new Date();
@@ -144,12 +139,6 @@ async function generarGastosFijos(env) {
   }
 
   return creados;
-}
-
-/** Endpoint manual para probar la generación de gastos fijos sin esperar al día 1. */
-async function generarFijosManual(env) {
-  const creados = await generarGastosFijos(env);
-  return json({ ok: true, creados, message: `Se generaron ${creados} gasto(s) fijo(s) para este mes.` });
 }
 
 // ---------------------------------------------------------------------
