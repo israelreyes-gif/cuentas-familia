@@ -14,11 +14,17 @@
 .cat-bar-bg{height:7px;background:var(--paper-dim);border-radius:5px;overflow:hidden;border:1px solid var(--rule);}
 .cat-bar-fill{height:100%;border-radius:5px;}
 
+.fija-tag{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
+  color:var(--ink-soft);background:var(--paper-dim);border:1px solid var(--rule);
+  border-radius:6px;padding:1px 6px;text-transform:uppercase;letter-spacing:.03em;
+}
+
 /* ---- administrar categorías ---- */
-.add-cat-row{display:flex;gap:8px;margin-bottom:20px;align-items:flex-end;}
+.add-cat-row{display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;}
 .add-cat-row .field{flex:1;}
 .add-cat-row label{margin-top:0;}
-.color-swatches{display:flex;gap:6px;padding:2px 0;}
+.color-swatches{display:flex;gap:6px;padding:2px 0;margin-bottom:6px;}
 .color-swatch{
   width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;
 }
@@ -29,17 +35,27 @@
   display:flex;align-items:center;justify-content:center;
 }
 .add-cat-btn:disabled{opacity:.7;cursor:default;}
+
+.new-cat-fija{
+  display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);
+  margin-bottom:18px;cursor:pointer;
+}
+.new-cat-fija input{width:auto;margin:0;}
+
 .manage-list{border-top:1px solid var(--rule);}
 .manage-row{
-  display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed var(--rule);
+  display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px dashed var(--rule);
 }
-.manage-row .cat-swatch{width:12px;height:12px;}
+.manage-row .cat-swatch{width:12px;height:12px;margin-top:3px;}
 .manage-row .name{flex:1;font-size:13.5px;font-weight:600;}
 .manage-row .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);}
-.budget-field{position:relative;flex-shrink:0;}
+.fija-check{
+  display:inline-flex;align-items:center;gap:4px;margin-left:10px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:400;color:var(--ink-soft);cursor:pointer;
+}
+.fija-check input{width:auto;margin:0;}
+.budget-field{position:relative;flex-shrink:0;margin-top:1px;}
 .budget-field input{
-  /* font-size 16px a propósito: por debajo de eso, iOS hace zoom automático
-     al tocar el campo, lo que desplaza toda la página */
   width:86px;border:1px solid var(--rule);background:#fff;border-radius:8px;
   padding:6px 8px 6px 20px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--ink);
 }
@@ -54,7 +70,7 @@
 .budget-field.loading .field-spinner{display:inline-block;}
 .delete-btn{
   background:none;border:none;color:var(--expense);font-size:16px;cursor:pointer;
-  padding:4px 6px;line-height:1;
+  padding:4px 6px;line-height:1;margin-top:1px;
 }
 .delete-btn:disabled{opacity:.6;cursor:default;}
 
