@@ -58,13 +58,18 @@ const Movimientos = (function () {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  /** Solo muestra categorías NO fijas — las fijas se gestionan aparte, no como gasto puntual. */
+  /**
+   * Solo muestra categorías NO fijas. Empieza siempre en blanco (opción
+   * vacía primero) en vez de dejar la primera categoría seleccionada por
+   * defecto, para obligar a elegir una a propósito.
+   */
   function renderCategorySelect() {
     const select = document.getElementById('categorySelect');
     if (!select) return;
-    select.innerHTML = AppData.getCategoriasParaGasto()
-      .map(c => `<option>${escapeHtml(c.nombre)}</option>`)
+    const opciones = AppData.getCategoriasParaGasto()
+      .map(c => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`)
       .join('');
+    select.innerHTML = `<option value="" disabled selected>Selecciona una categoría</option>` + opciones;
   }
 
   function renderLedgerList() {
@@ -115,6 +120,12 @@ const Movimientos = (function () {
     } else {
       amountInput.style.borderColor = '';
     }
+    if (!catVal) {
+      catSelect.style.borderColor = 'var(--expense)';
+      huboError = true;
+    } else {
+      catSelect.style.borderColor = '';
+    }
     if (!descVal) {
       descInput.style.borderColor = 'var(--expense)';
       huboError = true;
@@ -137,6 +148,7 @@ const Movimientos = (function () {
           UIHelpers.setButtonLoading(btn, false);
           amountInput.value = '';
           descInput.value = '';
+          catSelect.value = '';
         }, 800);
       })
       .catch((err) => {
