@@ -1,14 +1,7 @@
 /**
  * js/app.js
  * -----------------------------------------------------------------------
- * Punto de entrada de la app. Se encarga de:
- *   - cargar los datos reales desde la API (AppData.init())
- *   - la navegación entre pestañas (barra inferior)
- *   - pintar cada pestaña SOLO cuando se muestra, no todas al arrancar:
- *     así nunca se hace trabajo de más en una pestaña que el usuario
- *     no ha llegado a abrir, y cada vez que se entra en una pestaña se
- *     ve siempre lo último (sin tener que cerrar y volver a abrir la app)
- *   - registrar el service worker (PWA offline)
+ * Punto de entrada de la app.
  * -----------------------------------------------------------------------
  */
 
@@ -46,12 +39,12 @@ const App = (function () {
     });
   }
 
-  function init() {
-    bindBottomNav();
-    registerServiceWorker();
+  /** Se llama solo tras iniciar sesión correctamente (o si ya había una sesión guardada). */
+  function startApp() {
+    document.getElementById('view-login').classList.remove('active');
+    document.querySelector('.bottom-nav').classList.remove('hidden');
+    document.getElementById('view-mov').classList.add('active');
 
-    // Solo se inicializa la pestaña visible al arrancar (Movimiento).
-    // Categorías y Gráfica se pintan la primera vez que el usuario las abre.
     AppData.init()
       .then(() => {
         Movimientos.init();
@@ -65,10 +58,17 @@ const App = (function () {
       });
   }
 
+  function init() {
+    bindBottomNav();
+    registerServiceWorker();
+    Auth.boot(startApp);
+  }
+
   // ---- API pública del módulo ----
   return {
     init,
     showTab,
+    startApp,
   };
 
 })();
