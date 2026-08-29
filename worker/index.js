@@ -1,28 +1,35 @@
 /**
  * Cloudflare Worker — API de "Cuentas de casa"
  * -----------------------------------------------------------------------
- * Endpoints:
- *   GET    /api/categorias            -> lista de categorías + gasto del mes en curso
- *   POST   /api/categorias            -> crear categoría          { nombre, color, presupuesto }
- *   PATCH  /api/categorias/:nombre    -> actualizar presupuesto   { presupuesto }
- *   DELETE /api/categorias/:nombre    -> eliminar categoría (con reasignación si tiene movimientos)
- *   GET    /api/movimientos           -> lista de movimientos (con nombre/color de categoría)
- *   POST   /api/movimientos           -> crear movimiento { descripcion, categoria, tipo, importe, fecha }
- *   DELETE /api/movimientos/:id       -> eliminar un movimiento
+ * Endpoints públicos (sin token):
+ *   POST   /api/auth/registro         -> crea la única cuenta permitida
+ *   POST   /api/auth/login            -> devuelve un token de sesión
+ *
+ * Endpoints protegidos (requieren cabecera Authorization: Bearer <token>):
+ *   GET    /api/categorias
+ *   POST   /api/categorias
+ *   PATCH  /api/categorias/:nombre    -> acepta { presupuesto } y/o { fija }
+ *   DELETE /api/categorias/:nombre
+ *   GET    /api/movimientos
+ *   POST   /api/movimientos
+ *   DELETE /api/movimientos/:id
+ *
+ * Cada petición autenticada renueva la sesión 7 días más desde ese
+ * instante — por eso, mientras se use la app con cierta frecuencia, no
+ * vuelve a pedir el login.
  *
  * Requiere un binding D1 llamado "DB" (Settings -> Bindings en el Worker).
  * -----------------------------------------------------------------------
  */
 
-// Origen permitido para CORS: la URL de tu GitHub Pages.
-// Cámbiala si tu usuario/repositorio son distintos.
 const ALLOWED_ORIGIN = 'https://israelreyes-gif.github.io';
+const SESSION_DAYS = 7;
 
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 }
 
@@ -43,12 +50,23 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // preflight CORS
     if (method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders() });
     }
 
     try {
+      // ---- auth: público ----
+      if (path === '/api/auth/registro' && method === 'POST') {
+        return await registro(request, env);
+      }
+      if (path === '/api/auth/login' && method === 'POST') {
+        return await login(request, env);
+      }
+
+      // ---- a partir de aquí, todo requiere sesión válida ----
+      const auth = await requireAuth(request, env);
+      if (!auth.ok) return auth.response;
+
       // ---- /api/categorias ----
       if (path === '/api/categorias' && method === 'GET') {
         return await getCategorias(env);
@@ -84,6 +102,97 @@ export default {
 };
 
 // ---------------------------------------------------------------------
+// autenticación
+// ---------------------------------------------------------------------
+
+function bytesToHex(bytes) {
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return bytes;
+}
+
+async function hashPassword(password, saltHex) {
+  const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256);
+  return { saltHex: bytesToHex(salt), hashHex: bytesToHex(new Uint8Array(bits)) };
+}
+
+async function registro(request, env) {
+  const body = await request.json();
+  const username = (body.username || '').trim();
+  const password = body.password || '';
+
+  if (!username || !password) return error('Usuario y contraseña son obligatorios');
+  if (password.length < 6) return error('La contraseña debe tener al menos 6 caracteres');
+
+  const { count } = await env.DB.prepare('SELECT COUNT(*) as count FROM usuarios').first();
+  if (count > 0) return error('Ya existe una cuenta. No se permiten más registros.', 403);
+
+  const { saltHex, hashHex } = await hashPassword(password);
+
+  try {
+    await env.DB.prepare('INSERT INTO usuarios (username, password_salt, password_hash) VALUES (?, ?, ?)')
+      .bind(username, saltHex, hashHex).run();
+  } catch (err) {
+    if (String(err.message).includes('UNIQUE')) {
+      return error('Ese nombre de usuario ya existe', 409);
+    }
+    throw err;
+  }
+
+  return json({ ok: true, message: 'Cuenta creada correctamente.' }, 201);
+}
+
+async function login(request, env) {
+  const body = await request.json();
+  const username = (body.username || '').trim();
+  const password = body.password || '';
+
+  if (!username || !password) return error('Usuario y contraseña son obligatorios');
+
+  const user = await env.DB.prepare('SELECT id, password_salt, password_hash FROM usuarios WHERE username = ?')
+    .bind(username).first();
+  if (!user) return error('Usuario o contraseña incorrectos', 401);
+
+  const { hashHex } = await hashPassword(password, user.password_salt);
+  if (hashHex !== user.password_hash) return error('Usuario o contraseña incorrectos', 401);
+
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  await env.DB.prepare('INSERT INTO sesiones (token, usuario_id, expires_at) VALUES (?, ?, ?)')
+    .bind(token, user.id, expiresAt).run();
+
+  return json({ token });
+}
+
+async function requireAuth(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return { ok: false, response: error('No autenticado', 401) };
+
+  const session = await env.DB.prepare('SELECT usuario_id, expires_at FROM sesiones WHERE token = ?')
+    .bind(token).first();
+  if (!session) return { ok: false, response: error('Sesión no válida', 401) };
+
+  if (new Date(session.expires_at) < new Date()) {
+    await env.DB.prepare('DELETE FROM sesiones WHERE token = ?').bind(token).run();
+    return { ok: false, response: error('Sesión caducada', 401) };
+  }
+
+  const nuevaExpiracion = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  await env.DB.prepare('UPDATE sesiones SET expires_at = ? WHERE token = ?').bind(nuevaExpiracion, token).run();
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------
 // categorías
 // ---------------------------------------------------------------------
 
@@ -93,6 +202,7 @@ async function getCategorias(env) {
       c.nombre,
       c.color,
       c.presupuesto,
+      c.fija,
       COALESCE(SUM(CASE
         WHEN m.tipo = 'expense' AND strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
         THEN m.importe ELSE 0
@@ -115,13 +225,14 @@ async function createCategoria(request, env) {
   const nombre = (body.nombre || '').trim();
   const color = body.color || '#B7912B';
   const presupuesto = Math.max(0, Number(body.presupuesto) || 0);
+  const fija = body.fija ? 1 : 0;
 
   if (!nombre) return error('El nombre es obligatorio');
 
   try {
     await env.DB.prepare(
-      'INSERT INTO categorias (nombre, color, presupuesto) VALUES (?, ?, ?)'
-    ).bind(nombre, color, presupuesto).run();
+      'INSERT INTO categorias (nombre, color, presupuesto, fija) VALUES (?, ?, ?, ?)'
+    ).bind(nombre, color, presupuesto, fija).run();
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
       return error('Ya existe una categoría con ese nombre', 409);
@@ -129,124 +240,19 @@ async function createCategoria(request, env) {
     throw err;
   }
 
-  return json({ nombre, color, presupuesto, gastado: 0, movimientos: 0 }, 201);
+  return json({ nombre, color, presupuesto, fija, gastado: 0, movimientos: 0 }, 201);
 }
 
+/** Actualiza presupuesto y/o fija — solo cambia los campos que vengan en el body. */
 async function updateCategoria(nombre, request, env) {
   const body = await request.json();
-  const presupuesto = Math.max(0, Number(body.presupuesto) || 0);
+  const sets = [];
+  const binds = [];
 
-  const result = await env.DB.prepare(
-    'UPDATE categorias SET presupuesto = ? WHERE nombre = ?'
-  ).bind(presupuesto, nombre).run();
-
-  if (result.meta.changes === 0) return error('Categoría no encontrada', 404);
-  return json({ nombre, presupuesto });
-}
-
-/**
- * Borra una categoría.
- * - Si no tiene movimientos, se borra directamente.
- * - Si tiene movimientos y no se indica `reassignTo` en el body, NO se borra:
- *   se devuelve un 409 pidiendo a qué categoría reasignarlos.
- * - Si se indica `reassignTo`, se mueven todos sus movimientos a esa
- *   categoría y, solo entonces, se borra la original.
- */
-async function deleteCategoria(nombre, request, env) {
-  const cat = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
-    .bind(nombre).first();
-  if (!cat) return error('Categoría no encontrada', 404);
-
-  const { count } = await env.DB.prepare(
-    'SELECT COUNT(*) as count FROM movimientos WHERE categoria_id = ?'
-  ).bind(cat.id).first();
-
-  if (count > 0) {
-    let reassignTo = null;
-    try {
-      const body = await request.json();
-      reassignTo = body && body.reassignTo ? String(body.reassignTo).trim() : null;
-    } catch (_) {
-      // sin cuerpo (o cuerpo vacío): seguimos sin reassignTo, se pedirá abajo
-    }
-
-    if (!reassignTo) {
-      return json({
-        error: 'tiene_movimientos',
-        count,
-        message: `Esta categoría tiene ${count} movimiento(s). Indica a qué categoría reasignarlos.`,
-      }, 409);
-    }
-
-    if (reassignTo === nombre) {
-      return error('La categoría de destino tiene que ser distinta de la que borras', 400);
-    }
-
-    const destino = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
-      .bind(reassignTo).first();
-    if (!destino) return error('La categoría de destino no existe', 404);
-
-    await env.DB.prepare('UPDATE movimientos SET categoria_id = ? WHERE categoria_id = ?')
-      .bind(destino.id, cat.id).run();
+  if (body.presupuesto !== undefined) {
+    sets.push('presupuesto = ?');
+    binds.push(Math.max(0, Number(body.presupuesto) || 0));
   }
-
-  await env.DB.prepare('DELETE FROM categorias WHERE id = ?').bind(cat.id).run();
-  return json({ ok: true });
-}
-
-// ---------------------------------------------------------------------
-// movimientos
-// ---------------------------------------------------------------------
-
-async function getMovimientos(env) {
-  const { results } = await env.DB.prepare(`
-    SELECT
-      m.id,
-      m.descripcion AS desc,
-      c.nombre AS cat,
-      m.tipo,
-      m.importe,
-      m.fecha
-    FROM movimientos m
-    JOIN categorias c ON c.id = m.categoria_id
-    ORDER BY m.fecha DESC, m.id DESC
-  `).all();
-
-  return json(results);
-}
-
-async function createMovimiento(request, env) {
-  const body = await request.json();
-  const descripcion = (body.descripcion || '').trim();
-  const categoria = (body.categoria || '').trim();
-  const tipo = body.tipo === 'income' ? 'income' : 'expense';
-  const importe = Number(body.importe);
-  const fecha = body.fecha || new Date().toISOString().slice(0, 10);
-
-  if (!descripcion) return error('La descripción es obligatoria');
-  if (!categoria) return error('La categoría es obligatoria');
-  if (!importe || importe <= 0) return error('El importe debe ser mayor que 0');
-
-  const cat = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
-    .bind(categoria).first();
-  if (!cat) return error('La categoría indicada no existe', 404);
-
-  const result = await env.DB.prepare(
-    'INSERT INTO movimientos (descripcion, categoria_id, tipo, importe, fecha) VALUES (?, ?, ?, ?, ?)'
-  ).bind(descripcion, cat.id, tipo, importe, fecha).run();
-
-  return json({
-    id: result.meta.last_row_id,
-    desc: descripcion,
-    cat: categoria,
-    tipo,
-    importe,
-    fecha,
-  }, 201);
-}
-
-async function deleteMovimiento(id, env) {
-  const result = await env.DB.prepare('DELETE FROM movimientos WHERE id = ?').bind(id).run();
-  if (result.meta.changes === 0) return error('Movimiento no encontrado', 404);
-  return json({ ok: true });
-}
+  if (body.fija !== undefined) {
+    sets.push('fija = ?');
+    binds.push(body.fija ? 1 : 0
