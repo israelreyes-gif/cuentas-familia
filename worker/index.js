@@ -8,7 +8,7 @@
  * Endpoints protegidos (requieren cabecera Authorization: Bearer <token>):
  *   GET    /api/categorias
  *   POST   /api/categorias
- *   PATCH  /api/categorias/:nombre
+ *   PATCH  /api/categorias/:nombre    -> acepta { presupuesto } y/o { fija }
  *   DELETE /api/categorias/:nombre
  *   GET    /api/movimientos
  *   POST   /api/movimientos
@@ -115,7 +115,6 @@ function hexToBytes(hex) {
   return bytes;
 }
 
-/** Deriva un hash de la contraseña con PBKDF2 (nunca se guarda en texto plano). */
 async function hashPassword(password, saltHex) {
   const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
   const enc = new TextEncoder();
@@ -173,7 +172,6 @@ async function login(request, env) {
   return json({ token });
 }
 
-/** Comprueba el token de la cabecera Authorization y, si es válido, renueva la sesión 7 días más. */
 async function requireAuth(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -204,6 +202,7 @@ async function getCategorias(env) {
       c.nombre,
       c.color,
       c.presupuesto,
+      c.fija,
       COALESCE(SUM(CASE
         WHEN m.tipo = 'expense' AND strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
         THEN m.importe ELSE 0
@@ -226,13 +225,14 @@ async function createCategoria(request, env) {
   const nombre = (body.nombre || '').trim();
   const color = body.color || '#B7912B';
   const presupuesto = Math.max(0, Number(body.presupuesto) || 0);
+  const fija = body.fija ? 1 : 0;
 
   if (!nombre) return error('El nombre es obligatorio');
 
   try {
     await env.DB.prepare(
-      'INSERT INTO categorias (nombre, color, presupuesto) VALUES (?, ?, ?)'
-    ).bind(nombre, color, presupuesto).run();
+      'INSERT INTO categorias (nombre, color, presupuesto, fija) VALUES (?, ?, ?, ?)'
+    ).bind(nombre, color, presupuesto, fija).run();
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
       return error('Ya existe una categoría con ese nombre', 409);
@@ -240,19 +240,33 @@ async function createCategoria(request, env) {
     throw err;
   }
 
-  return json({ nombre, color, presupuesto, gastado: 0, movimientos: 0 }, 201);
+  return json({ nombre, color, presupuesto, fija, gastado: 0, movimientos: 0 }, 201);
 }
 
+/** Actualiza presupuesto y/o fija — solo cambia los campos que vengan en el body. */
 async function updateCategoria(nombre, request, env) {
   const body = await request.json();
-  const presupuesto = Math.max(0, Number(body.presupuesto) || 0);
+  const sets = [];
+  const binds = [];
 
-  const result = await env.DB.prepare(
-    'UPDATE categorias SET presupuesto = ? WHERE nombre = ?'
-  ).bind(presupuesto, nombre).run();
+  if (body.presupuesto !== undefined) {
+    sets.push('presupuesto = ?');
+    binds.push(Math.max(0, Number(body.presupuesto) || 0));
+  }
+  if (body.fija !== undefined) {
+    sets.push('fija = ?');
+    binds.push(body.fija ? 1 : 0);
+  }
+  if (sets.length === 0) return error('Nada que actualizar');
 
+  binds.push(nombre);
+  const result = await env.DB.prepare(`UPDATE categorias SET ${sets.join(', ')} WHERE nombre = ?`)
+    .bind(...binds).run();
   if (result.meta.changes === 0) return error('Categoría no encontrada', 404);
-  return json({ nombre, presupuesto });
+
+  const actualizado = await env.DB.prepare('SELECT nombre, presupuesto, fija FROM categorias WHERE nombre = ?')
+    .bind(nombre).first();
+  return json(actualizado);
 }
 
 async function deleteCategoria(nombre, request, env) {
