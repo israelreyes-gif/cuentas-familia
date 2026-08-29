@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Cuentas de casa</title>
 
-<!-- PWA: manifest, tema e iconos -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F2A24">
 <link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
@@ -17,7 +16,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- CSS dividido por componente, en orden de dependencia -->
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/header.css">
 <link rel="stylesheet" href="css/nav.css">
@@ -25,6 +23,7 @@
 <link rel="stylesheet" href="css/categorias.css">
 <link rel="stylesheet" href="css/grafica.css">
 <link rel="stylesheet" href="css/loading.css">
+<link rel="stylesheet" href="css/auth.css">
 </head>
 <body>
 
@@ -38,8 +37,24 @@
     <div class="balance-sub">Ingresos 0,00 € · Gastos 0,00 €</div>
   </div>
 
+  <!-- VISTA LOGIN (por defecto es la única visible hasta que Auth confirme sesión) -->
+  <div class="view active" id="view-login">
+    <h2 class="section-title">Iniciar sesión</h2>
+    <p class="section-sub">Accede con el usuario y contraseña de la familia.</p>
+
+    <label>Usuario</label>
+    <input type="text" id="loginUser" autocomplete="username">
+
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" autocomplete="current-password">
+
+    <div class="login-error" id="loginError"></div>
+
+    <button class="save-btn" id="loginBtn" onclick="Auth.login()">Entrar</button>
+  </div>
+
   <!-- VISTA 1: AÑADIR MOVIMIENTO -->
-  <div class="view active" id="view-mov">
+  <div class="view" id="view-mov">
     <h2 class="section-title">Nuevo movimiento</h2>
     <p class="section-sub">Registra un ingreso o un gasto en un momento.</p>
 
@@ -107,6 +122,10 @@
     </div>
     <div class="color-swatches" id="colorSwatches"></div>
 
+    <label class="new-cat-fija">
+      <input type="checkbox" id="newCatFija"> Marcar como categoría fija (no aparece al registrar un gasto)
+    </label>
+
     <div class="manage-list" id="manageList" style="margin-top:20px;"></div>
   </div>
 
@@ -169,7 +188,7 @@
 
   </div>
 
-  <div class="bottom-nav">
+  <div class="bottom-nav hidden">
     <div class="nav-btn active" data-tab="mov">
       <span class="nav-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -204,12 +223,11 @@
   </div>
 </div>
 
-<!-- Librería externa: Chart.js, para la pestaña Gráfica -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
-<!-- Módulos de la app, en orden de dependencia -->
-<script src="js/data.js"></script>
 <script src="js/ui-helpers.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/data.js"></script>
 <script src="js/movimientos.js"></script>
 <script src="js/categorias.js"></script>
 <script src="js/grafica.js"></script>
