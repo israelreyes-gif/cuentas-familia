@@ -2,12 +2,7 @@
  * js/movimientos.js
  * -----------------------------------------------------------------------
  * Pestaña "Movimientos": alta de ingresos/gastos, listado tipo ledger, y
- * cabecera con saldo/ingresos/gastos del mes en curso — todo calculado
- * siempre a partir de los datos reales de AppData, nunca de valores fijos.
- *
- * Depende de:
- *   - AppData    (js/data.js)        → leer/guardar movimientos y categorías
- *   - UIHelpers  (js/ui-helpers.js)  → spinners y overlays de carga
+ * cabecera con saldo/ingresos/gastos del mes en curso.
  * -----------------------------------------------------------------------
  */
 
@@ -16,20 +11,15 @@ const Movimientos = (function () {
   const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const MESES_ABREV = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-  // ---- utilidades internas ----
-
   function formatMoney(valor) {
     return valor.toFixed(2).replace('.', ',') + ' €';
   }
 
-  /** Evita inyectar HTML si la descripción escrita por el usuario contiene < > etc. */
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
-
-  // ---- cabecera: saldo del mes en curso, calculado siempre a partir de datos reales ----
 
   function renderHeader() {
     const hoy = new Date();
@@ -68,12 +58,11 @@ const Movimientos = (function () {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  // ---- pintado ----
-
+  /** Solo muestra categorías NO fijas — las fijas se gestionan aparte, no como gasto puntual. */
   function renderCategorySelect() {
     const select = document.getElementById('categorySelect');
     if (!select) return;
-    select.innerHTML = AppData.getCategoriasOrdenadas()
+    select.innerHTML = AppData.getCategoriasParaGasto()
       .map(c => `<option>${escapeHtml(c.nombre)}</option>`)
       .join('');
   }
@@ -101,9 +90,6 @@ const Movimientos = (function () {
     `).join('');
   }
 
-  // ---- interacción ----
-
-  /** Alterna el tipo de movimiento (Gasto / Ingreso) en el formulario. */
   function setType(type) {
     document.getElementById('btnExpense').classList.toggle('selected', type === 'expense');
     document.getElementById('btnIncome').classList.toggle('selected', type === 'income');
@@ -122,8 +108,6 @@ const Movimientos = (function () {
     const catVal = catSelect.value;
     const fechaVal = (dateInput && dateInput.value) || new Date().toISOString().slice(0, 10);
 
-    // Validación real: sin importe válido o sin descripción, no se inventa
-    // ningún valor por defecto — se avisa y no se guarda nada.
     let huboError = false;
     if (!amountVal || amountVal <= 0) {
       amountInput.style.borderColor = 'var(--expense)';
@@ -177,8 +161,6 @@ const Movimientos = (function () {
       });
   }
 
-  // ---- arranque del módulo ----
-
   function init() {
     renderCategorySelect();
     renderHeader();
@@ -187,7 +169,6 @@ const Movimientos = (function () {
     });
   }
 
-  // ---- API pública del módulo ----
   return {
     init,
     renderLedgerList,
