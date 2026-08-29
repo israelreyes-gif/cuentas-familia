@@ -255,4 +255,113 @@ async function updateCategoria(nombre, request, env) {
   }
   if (body.fija !== undefined) {
     sets.push('fija = ?');
-    binds.push(body.fija ? 1 : 0
+    binds.push(body.fija ? 1 : 0);
+  }
+  if (sets.length === 0) return error('Nada que actualizar');
+
+  binds.push(nombre);
+  const result = await env.DB.prepare(`UPDATE categorias SET ${sets.join(', ')} WHERE nombre = ?`)
+    .bind(...binds).run();
+  if (result.meta.changes === 0) return error('Categoría no encontrada', 404);
+
+  const actualizado = await env.DB.prepare('SELECT nombre, presupuesto, fija FROM categorias WHERE nombre = ?')
+    .bind(nombre).first();
+  return json(actualizado);
+}
+
+async function deleteCategoria(nombre, request, env) {
+  const cat = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
+    .bind(nombre).first();
+  if (!cat) return error('Categoría no encontrada', 404);
+
+  const { count } = await env.DB.prepare(
+    'SELECT COUNT(*) as count FROM movimientos WHERE categoria_id = ?'
+  ).bind(cat.id).first();
+
+  if (count > 0) {
+    let reassignTo = null;
+    try {
+      const body = await request.json();
+      reassignTo = body && body.reassignTo ? String(body.reassignTo).trim() : null;
+    } catch (_) {}
+
+    if (!reassignTo) {
+      return json({
+        error: 'tiene_movimientos',
+        count,
+        message: `Esta categoría tiene ${count} movimiento(s). Indica a qué categoría reasignarlos.`,
+      }, 409);
+    }
+
+    if (reassignTo === nombre) {
+      return error('La categoría de destino tiene que ser distinta de la que borras', 400);
+    }
+
+    const destino = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
+      .bind(reassignTo).first();
+    if (!destino) return error('La categoría de destino no existe', 404);
+
+    await env.DB.prepare('UPDATE movimientos SET categoria_id = ? WHERE categoria_id = ?')
+      .bind(destino.id, cat.id).run();
+  }
+
+  await env.DB.prepare('DELETE FROM categorias WHERE id = ?').bind(cat.id).run();
+  return json({ ok: true });
+}
+
+// ---------------------------------------------------------------------
+// movimientos
+// ---------------------------------------------------------------------
+
+async function getMovimientos(env) {
+  const { results } = await env.DB.prepare(`
+    SELECT
+      m.id,
+      m.descripcion AS desc,
+      c.nombre AS cat,
+      m.tipo,
+      m.importe,
+      m.fecha
+    FROM movimientos m
+    JOIN categorias c ON c.id = m.categoria_id
+    ORDER BY m.fecha DESC, m.id DESC
+  `).all();
+
+  return json(results);
+}
+
+async function createMovimiento(request, env) {
+  const body = await request.json();
+  const descripcion = (body.descripcion || '').trim();
+  const categoria = (body.categoria || '').trim();
+  const tipo = body.tipo === 'income' ? 'income' : 'expense';
+  const importe = Number(body.importe);
+  const fecha = body.fecha || new Date().toISOString().slice(0, 10);
+
+  if (!descripcion) return error('La descripción es obligatoria');
+  if (!categoria) return error('La categoría es obligatoria');
+  if (!importe || importe <= 0) return error('El importe debe ser mayor que 0');
+
+  const cat = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
+    .bind(categoria).first();
+  if (!cat) return error('La categoría indicada no existe', 404);
+
+  const result = await env.DB.prepare(
+    'INSERT INTO movimientos (descripcion, categoria_id, tipo, importe, fecha) VALUES (?, ?, ?, ?, ?)'
+  ).bind(descripcion, cat.id, tipo, importe, fecha).run();
+
+  return json({
+    id: result.meta.last_row_id,
+    desc: descripcion,
+    cat: categoria,
+    tipo,
+    importe,
+    fecha,
+  }, 201);
+}
+
+async function deleteMovimiento(id, env) {
+  const result = await env.DB.prepare('DELETE FROM movimientos WHERE id = ?').bind(id).run();
+  if (result.meta.changes === 0) return error('Movimiento no encontrado', 404);
+  return json({ ok: true });
+}
