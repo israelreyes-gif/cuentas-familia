@@ -117,7 +117,6 @@ const AppData = (function () {
     return [...categorias].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }
 
-  /** Solo las categorías NO fijas, para el desplegable del formulario de "Nuevo movimiento". */
   function getCategoriasParaGasto() {
     return getCategoriasOrdenadas().filter(c => !c.fija);
   }
@@ -182,6 +181,17 @@ const AppData = (function () {
 
   function getColorPalette() {
     return colorPalette;
+  }
+
+  /**
+   * SOLO PRUEBA: llama al endpoint que genera ya los gastos fijos del
+   * mes, sin esperar al día 1. Tras llamarlo, refresca movimientos y
+   * categorías desde el servidor para reflejar lo que se haya creado.
+   */
+  async function generarFijosAhora() {
+    const res = await apiFetch('/api/categorias/generar-fijos', { method: 'POST' });
+    await init();
+    return res;
   }
 
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -249,6 +259,7 @@ const AppData = (function () {
     deleteCategoria,
     updateCategoriaPresupuesto,
     updateCategoriaFija,
+    generarFijosAhora,
     getColorPalette,
     getAvailableYears,
     getYearData,
