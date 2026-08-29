@@ -3,14 +3,6 @@
  * -----------------------------------------------------------------------
  * Módulo de datos de la app — conectado a la API real
  * (Cloudflare Worker + D1) en vez de usar datos mock en memoria.
- *
- * Patrón: init() carga categorías y movimientos reales una vez, y los deja
- * en caché local (movimientos/categorias). Las funciones de lectura
- * (getMovimientos, getCategorias...) siguen siendo síncronas y leen de esa
- * caché. Las funciones que escriben (addMovimiento, deleteMovimiento,
- * addCategoria, deleteCategoria, updateCategoriaPresupuesto) son
- * asíncronas (devuelven una Promise), porque hacen una llamada real a la
- * API antes de actualizar la caché local.
  * -----------------------------------------------------------------------
  */
 
@@ -23,15 +15,23 @@ const AppData = (function () {
 
   const colorPalette = ["#B7912B", "#C1443D", "#1E8A63", "#6B5B95", "#3E7C8C", "#8C5E3E", "#5A5F73", "#B0567E"];
 
-  // ---- helper interno para llamar a la API ----
-
   async function apiFetch(path, options) {
-    const res = await fetch(API_BASE + path, Object.assign({
-      headers: { 'Content-Type': 'application/json' },
-    }, options));
+    const token = Auth.getToken();
+    const headers = Object.assign(
+      { 'Content-Type': 'application/json' },
+      token ? { Authorization: 'Bearer ' + token } : {},
+      (options && options.headers) || {}
+    );
+
+    const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
 
     let data = null;
-    try { data = await res.json(); } catch (_) { /* respuesta sin cuerpo JSON */ }
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.status === 401) {
+      Auth.forceLogout();
+      throw new Error('Tu sesión ha caducado. Vuelve a iniciar sesión.');
+    }
 
     if (!res.ok) {
       const err = new Error((data && data.message) || (data && data.error) || 'Error de conexión con el servidor');
@@ -48,8 +48,6 @@ const AppData = (function () {
     return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
   }
 
-  // ---- carga inicial ----
-
   async function init() {
     const [cats, movs] = await Promise.all([
       apiFetch('/api/categorias'),
@@ -58,8 +56,6 @@ const AppData = (function () {
     categorias = cats;
     movimientos = movs;
   }
-
-  // ---- movimientos ----
 
   function getMovimientos() {
     return movimientos;
@@ -107,8 +103,6 @@ const AppData = (function () {
     }
   }
 
-  // ---- categorías ----
-
   function getCategorias() {
     return categorias;
   }
@@ -123,31 +117,24 @@ const AppData = (function () {
     return [...categorias].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }
 
+  /** Solo las categorías NO fijas, para el desplegable del formulario de "Nuevo movimiento". */
+  function getCategoriasParaGasto() {
+    return getCategoriasOrdenadas().filter(c => !c.fija);
+  }
+
   function categoriaExiste(nombre) {
     return categorias.some(c => c.nombre.toLowerCase() === nombre.toLowerCase());
   }
 
-  async function addCategoria({ nombre, color, presupuesto }) {
+  async function addCategoria({ nombre, color, presupuesto, fija }) {
     const nueva = await apiFetch('/api/categorias', {
       method: 'POST',
-      body: JSON.stringify({ nombre, color, presupuesto: presupuesto || 0 }),
+      body: JSON.stringify({ nombre, color, presupuesto: presupuesto || 0, fija: !!fija }),
     });
     categorias.push(nueva);
     return nueva;
   }
 
-  /**
-   * Intenta borrar una categoría.
-   * - Sin `reassignTo`: si el servidor responde 409 porque tiene movimientos,
-   *   la promesa se rechaza con err.data.error === 'tiene_movimientos' y
-   *   err.data.count con el número de movimientos afectados.
-   * - Con `reassignTo`: el servidor mueve esos movimientos a la categoría
-   *   indicada y borra la original. Aquí, además de mover los movimientos
-   *   en la caché local, se suma su importe y cuenta al "gastado" y
-   *   "movimientos" ya guardados en la categoría de destino — si no se
-   *   hiciera esto, el total de esa categoría se quedaría desactualizado
-   *   en la pestaña Categorías hasta recargar la app entera.
-   */
   async function deleteCategoria(nombre, reassignTo) {
     await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
       method: 'DELETE',
@@ -183,11 +170,19 @@ const AppData = (function () {
     return cat;
   }
 
+  async function updateCategoriaFija(nombre, fija) {
+    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+      method: 'PATCH',
+      body: JSON.stringify({ fija: !!fija }),
+    });
+    const cat = categorias.find(c => c.nombre === nombre);
+    if (cat) cat.fija = actualizado.fija;
+    return cat;
+  }
+
   function getColorPalette() {
     return colorPalette;
   }
-
-  // ---- gráfica: calculada a partir de los movimientos reales ----
 
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -240,7 +235,6 @@ const AppData = (function () {
     return { total, items: lista };
   }
 
-  // ---- API pública del módulo ----
   return {
     init,
     getMovimientos,
@@ -249,10 +243,12 @@ const AppData = (function () {
     getCategorias,
     getCategoriasConGasto,
     getCategoriasOrdenadas,
+    getCategoriasParaGasto,
     categoriaExiste,
     addCategoria,
     deleteCategoria,
     updateCategoriaPresupuesto,
+    updateCategoriaFija,
     getColorPalette,
     getAvailableYears,
     getYearData,
