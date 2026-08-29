@@ -2,23 +2,13 @@
  * js/categorias.js
  * -----------------------------------------------------------------------
  * Pestaña "Categorías": gasto del mes por categoría + administración
- * (añadir, editar presupuesto, eliminar).
- *
- * showCatScreen() pinta la pantalla correspondiente (gasto o administrar)
- * cada vez que se entra en ella, en vez de solo una vez al arrancar la
- * app — así siempre se ve lo último, sin tener que cerrar y reabrir.
- *
- * Al borrar una categoría con movimientos asociados, el servidor devuelve
- * un 409 y pide una categoría de destino: aquí se muestra un desplegable
- * en línea para elegirla, tal como se decidió en el plan.
+ * (añadir, editar presupuesto, marcar como fija, eliminar).
  * -----------------------------------------------------------------------
  */
 
 const Categorias = (function () {
 
   let selectedColor = AppData.getColorPalette()[0];
-
-  // ---- utilidades internas ----
 
   function formatMoney(valor) {
     return valor.toFixed(2).replace('.', ',') + ' €';
@@ -34,8 +24,6 @@ const Categorias = (function () {
     return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
-  // ---- pintado: gasto por categoría ----
-
   function renderSpendList() {
     const list = document.getElementById('catSpendList');
     if (!list) return;
@@ -50,7 +38,7 @@ const Categorias = (function () {
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-swatch" style="background:${c.color}"></span>${escapeHtml(c.nombre)}</div>
+              <div class="cat-name"><span class="cat-swatch" style="background:${c.color}"></span>${escapeHtml(c.nombre)}${c.fija ? ' <span class="fija-tag">Fija</span>' : ''}</div>
               <div class="cat-nums">${formatMoney(c.gastado)} ${sinPresupuesto ? '· sin presupuesto' : '/ ' + c.presupuesto + ' €'}</div>
             </div>
             <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
@@ -69,8 +57,6 @@ const Categorias = (function () {
     el.textContent = formatMoney(total);
   }
 
-  // ---- pintado: administrar categorías ----
-
   function renderManageList() {
     const el = document.getElementById('manageList');
     if (!el) return;
@@ -84,7 +70,14 @@ const Categorias = (function () {
     el.innerHTML = lista.map(c => `
       <div class="manage-row">
         <span class="cat-swatch" style="background:${c.color}"></span>
-        <span class="name">${escapeHtml(c.nombre)}<br><span class="count">${c.movimientos} mov.</span></span>
+        <span class="name">
+          ${escapeHtml(c.nombre)}<br>
+          <span class="count">${c.movimientos} mov.</span>
+          <label class="fija-check">
+            <input type="checkbox" ${c.fija ? 'checked' : ''}
+              onchange="Categorias.toggleFija('${escapeJsString(c.nombre)}', this.checked, this)"> Fija
+          </label>
+        </span>
         <span class="budget-field">
           <input type="number" value="${c.presupuesto || ''}" placeholder="0"
             onchange="Categorias.updateBudget('${escapeJsString(c.nombre)}', this.value, this)">
@@ -108,9 +101,6 @@ const Categorias = (function () {
     buildColorSwatches();
   }
 
-  // ---- navegación entre las dos pantallas de esta pestaña ----
-
-  /** Cada vez que se entra en una de las dos pantallas, se pinta con los datos más recientes. */
   function showCatScreen(which) {
     document.getElementById('view-cat-spend').classList.remove('active');
     document.getElementById('view-cat-manage').classList.remove('active');
@@ -125,11 +115,10 @@ const Categorias = (function () {
     }
   }
 
-  // ---- acciones ----
-
   function addCategory() {
     const input = document.getElementById('newCatName');
     const budgetInput = document.getElementById('newCatBudget');
+    const fijaInput = document.getElementById('newCatFija');
     const btn = document.querySelector('.add-cat-btn');
 
     const nombre = input.value.trim();
@@ -142,13 +131,15 @@ const Categorias = (function () {
     input.style.borderColor = '';
 
     const presupuesto = Math.max(0, parseFloat(budgetInput.value) || 0);
+    const fija = fijaInput ? fijaInput.checked : false;
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.addCategoria({ nombre, color: selectedColor, presupuesto })
+    AppData.addCategoria({ nombre, color: selectedColor, presupuesto, fija })
       .then(() => {
         input.value = '';
         budgetInput.value = '';
+        if (fijaInput) fijaInput.checked = false;
         renderManageList();
         Movimientos.renderCategorySelect();
       })
@@ -180,7 +171,6 @@ const Categorias = (function () {
       });
   }
 
-  /** Muestra un desplegable en línea para elegir a qué categoría mover los movimientos. */
   function showReassignPrompt(nombre, count, btn) {
     if (btn) UIHelpers.setButtonLoading(btn, false);
     const row = btn ? btn.closest('.manage-row') : null;
@@ -239,7 +229,20 @@ const Categorias = (function () {
       });
   }
 
-  // ---- API pública del módulo ----
+  function toggleFija(nombre, checked, checkboxEl) {
+    checkboxEl.disabled = true;
+    AppData.updateCategoriaFija(nombre, checked)
+      .then(() => {
+        checkboxEl.disabled = false;
+        Movimientos.renderCategorySelect();
+      })
+      .catch((err) => {
+        checkboxEl.checked = !checked;
+        checkboxEl.disabled = false;
+        alert(err.message || 'No se pudo actualizar la categoría.');
+      });
+  }
+
   return {
     renderSpendList,
     renderManageList,
@@ -251,6 +254,7 @@ const Categorias = (function () {
     cancelReassign,
     confirmReassignDelete,
     updateBudget,
+    toggleFija,
   };
 
 })();
