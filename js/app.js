@@ -14,6 +14,7 @@ const App = (function () {
     if (name === 'mov') {
       document.getElementById('view-mov').classList.add('active');
       Movimientos.renderCategorySelect();
+      Movimientos.resetDateField();
       Movimientos.renderHeader();
       Movimientos.renderLedgerList();
     } else if (name === 'cat') {
@@ -39,7 +40,6 @@ const App = (function () {
     });
   }
 
-  /** Se llama solo tras iniciar sesión correctamente (o si ya había una sesión guardada). */
   function startApp() {
     document.getElementById('view-login').classList.remove('active');
     document.querySelector('.bottom-nav').classList.remove('hidden');
@@ -64,7 +64,6 @@ const App = (function () {
     Auth.boot(startApp);
   }
 
-  // ---- API pública del módulo ----
   return {
     init,
     showTab,
