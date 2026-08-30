@@ -1,17 +1,20 @@
 /**
  * server.ts
  * -----------------------------------------------------------------------
- * API de "Cuentas de casa" corriendo en Deno Deploy en vez de en
- * Cloudflare Workers. Misma lógica de negocio que worker/index.js —
- * solo cambia CÓMO se habla con D1: en vez del acceso directo "env.DB"
- * (que solo existe dentro de Cloudflare), se usa la API HTTP pública de
- * D1, envuelta en un "puente" que se comporta igual (.prepare().bind()
- * .all()/.first()/.run()), para que el resto del código sea idéntico.
+ * API de "Cuentas de casa" corriendo en Deno Deploy. Habla con D1
+ * (Cloudflare) por su API HTTP a través de un "puente" que imita
+ * env.DB.prepare()... para que el resto del código sea igual que en
+ * Cloudflare Workers.
+ *
+ * Incluye ahora la generación automática de gastos fijos el día 1 de
+ * cada mes (vía Deno.cron, la tarea programada nativa de Deno Deploy),
+ * más un endpoint manual protegido para probarlo sin esperar al día 1.
  * -----------------------------------------------------------------------
  */
 
 const ALLOWED_ORIGIN = "https://israelreyes-gif.github.io";
 const SESSION_DAYS = 7;
+const DESC_GASTO_FIJO = "Gasto fijo mensual";
 
 // ---------------------------------------------------------------------
 // "puente" hacia D1
@@ -87,6 +90,46 @@ function json(data: unknown, status = 200) {
 
 function error(message: string, status = 400) {
   return json({ error: message }, status);
+}
+
+// ---------------------------------------------------------------------
+// gastos fijos automáticos
+// ---------------------------------------------------------------------
+
+/**
+ * Crea un gasto por cada categoría "fija" con presupuesto > 0, fechado el
+ * día 1 del mes en curso, usando el presupuesto como importe. No duplica
+ * si ya existe uno igual ese mes para esa categoría.
+ */
+async function generarGastosFijos(db: ReturnType<typeof dbFromEnv>) {
+  const hoy = new Date();
+  const primerDiaMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
+
+  const { results: fijas } = await db.prepare(
+    "SELECT id, presupuesto FROM categorias WHERE fija = 1 AND presupuesto > 0"
+  ).all();
+
+  let creados = 0;
+  for (const cat of fijas) {
+    const yaExiste = await db.prepare(
+      "SELECT id FROM movimientos WHERE categoria_id = ? AND fecha = ? AND descripcion = ?"
+    ).bind(cat.id, primerDiaMes, DESC_GASTO_FIJO).first();
+
+    if (yaExiste) continue;
+
+    await db.prepare(
+      "INSERT INTO movimientos (descripcion, categoria_id, tipo, importe, fecha) VALUES (?, ?, 'expense', ?, ?)"
+    ).bind(DESC_GASTO_FIJO, cat.id, cat.presupuesto, primerDiaMes).run();
+    creados++;
+  }
+
+  return creados;
+}
+
+/** Endpoint manual para probar la generación de gastos fijos sin esperar al día 1. */
+async function generarFijosManual(db: ReturnType<typeof dbFromEnv>) {
+  const creados = await generarGastosFijos(db);
+  return json({ ok: true, creados, message: `Se generaron ${creados} gasto(s) fijo(s) para este mes.` });
 }
 
 // ---------------------------------------------------------------------
@@ -354,8 +397,8 @@ async function deleteMovimiento(id: number, db: ReturnType<typeof dbFromEnv>) {
 }
 
 // ---------------------------------------------------------------------
-// notificaciones push (guardar/borrar suscripción — el ENVÍO por cron
-// se añadirá en un paso aparte)
+// notificaciones push (guardar/borrar suscripción — el ENVÍO se añade
+// en el siguiente paso)
 // ---------------------------------------------------------------------
 
 async function pushSubscribe(request: Request, db: ReturnType<typeof dbFromEnv>) {
@@ -414,6 +457,9 @@ Deno.serve(async (request: Request) => {
     if (path === "/api/categorias" && method === "POST") {
       return await createCategoria(request, db);
     }
+    if (path === "/api/categorias/generar-fijos" && method === "POST") {
+      return await generarFijosManual(db);
+    }
     const catMatch = path.match(/^\/api\/categorias\/([^/]+)$/);
     if (catMatch && method === "PATCH") {
       return await updateCategoria(decodeURIComponent(catMatch[1]), request, db);
@@ -444,4 +490,13 @@ Deno.serve(async (request: Request) => {
   } catch (err) {
     return error("Error interno: " + err.message, 500);
   }
+});
+
+// ---------------------------------------------------------------------
+// tarea programada: el día 1 de cada mes a las 03:00 UTC
+// ---------------------------------------------------------------------
+
+Deno.cron("gastos-fijos-mensuales", "0 3 1 * *", async () => {
+  const db = dbFromEnv();
+  await generarGastosFijos(db);
 });
