@@ -45,6 +45,8 @@ const App = (function () {
     document.querySelector('.bottom-nav').classList.remove('hidden');
     document.getElementById('view-mov').classList.add('active');
 
+    if (typeof Push !== 'undefined') Push.renderStatus();
+
     AppData.init()
       .then(() => {
         Movimientos.init();
