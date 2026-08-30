@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cuentas-casa-v3';
+const CACHE_NAME = 'cuentas-casa-v4';
 
 const CORE_ASSETS = [
   './',
@@ -15,6 +15,7 @@ const CORE_ASSETS = [
   './js/data.js',
   './js/ui-helpers.js',
   './js/auth.js',
+  './js/push.js',
   './js/movimientos.js',
   './js/categorias.js',
   './js/grafica.js',
@@ -54,5 +55,33 @@ self.addEventListener('fetch', (event) => {
         return res;
       })
       .catch(() => caches.match(req))
+  );
+});
+
+/** Muestra la notificación cuando llega un push del Worker (p.ej. el aviso de nómina el día 1). */
+self.addEventListener('push', (event) => {
+  let data = { title: 'Cuentas de casa', body: 'Tienes un aviso nuevo.' };
+  try { data = event.data.json(); } catch (_) { /* payload no era JSON válido, se usa el texto por defecto */ }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: './assets/icon-192.png',
+      badge: './assets/icon-192.png',
+      data: { url: './' },
+    })
+  );
+});
+
+/** Al tocar la notificación, abre la app (o la enfoca si ya está abierta). */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
   );
 });
