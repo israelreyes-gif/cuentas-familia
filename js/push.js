@@ -1,13 +1,9 @@
 /**
  * js/push.js
  * -----------------------------------------------------------------------
- * Gestiona la activación de notificaciones push en este dispositivo:
- * pide permiso, se suscribe al servicio de notificaciones del navegador
- * con la clave pública VAPID, y guarda esa suscripción en el servidor.
- *
- * Se controla con un icono de campana en la cabecera (ver index.html):
- * atenuada y pulsable si no está activada, dorada e informativa si ya
- * lo está.
+ * Gestiona la activación/desactivación de notificaciones push, mediante
+ * la campana de la cabecera (ver index.html): tocarla activa los avisos
+ * si están apagados, o los desactiva si ya estaban encendidos.
  * -----------------------------------------------------------------------
  */
 
@@ -37,21 +33,7 @@ const Push = (function () {
     return sub ? 'enabled' : 'disabled';
   }
 
-  async function enable(btn) {
-    const estadoActual = await getStatus();
-    if (estadoActual === 'enabled') return; // ya activado, no hace nada al tocarla
-
-    if (estadoActual === 'unsupported') {
-      alert('Las notificaciones no están disponibles aquí. En iPhone, la app tiene que estar instalada desde "Compartir → Añadir a pantalla de inicio" (no vale desde una pestaña normal de Safari).');
-      return;
-    }
-    if (estadoActual === 'denied') {
-      alert('Bloqueaste las notificaciones para esta app. Actívalas desde los Ajustes de iPhone → Notificaciones → Cuentas de casa, y vuelve a abrir la app.');
-      return;
-    }
-
-    if (btn) btn.style.opacity = '.5';
-
+  async function activar(btn) {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
@@ -77,16 +59,60 @@ const Push = (function () {
         body: JSON.stringify({ subscription: sub.toJSON() }),
       });
       if (!res.ok) throw new Error('No se pudo guardar la suscripción en el servidor.');
-
-      await renderStatus();
     } catch (err) {
       alert(err.message || 'No se pudieron activar las notificaciones.');
-    } finally {
-      if (btn) btn.style.opacity = '';
     }
   }
 
-  /** Pinta el icono de campana según el estado actual. Se llama al arrancar la app y tras activar. */
+  async function desactivar() {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
+
+      const token = Auth.getToken();
+      await fetch(API_BASE + '/api/push/unsubscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
+        },
+        body: JSON.stringify({ endpoint }),
+      });
+    } catch (err) {
+      alert(err.message || 'No se pudieron desactivar las notificaciones.');
+    }
+  }
+
+  /** Tocar la campana: activa si está apagada, desactiva si ya estaba encendida. */
+  async function enable(btn) {
+    const estadoActual = await getStatus();
+
+    if (estadoActual === 'unsupported') {
+      alert('Las notificaciones no están disponibles aquí. En iPhone, la app tiene que estar instalada desde "Compartir → Añadir a pantalla de inicio" (no vale desde una pestaña normal de Safari).');
+      return;
+    }
+    if (estadoActual === 'denied') {
+      alert('Bloqueaste las notificaciones para esta app. Actívalas desde los Ajustes de iPhone → Notificaciones → Cuentas de casa, y vuelve a abrir la app.');
+      return;
+    }
+
+    if (btn) btn.style.opacity = '.5';
+
+    if (estadoActual === 'enabled') {
+      await desactivar();
+    } else {
+      await activar(btn);
+    }
+
+    await renderStatus();
+    if (btn) btn.style.opacity = '';
+  }
+
+  /** Pinta el icono de campana según el estado actual. Se llama al arrancar la app y tras tocarla. */
   async function renderStatus() {
     const bell = document.getElementById('pushBell');
     if (!bell) return;
@@ -100,7 +126,7 @@ const Push = (function () {
 
     bell.classList.remove('hidden');
     bell.classList.toggle('enabled', status === 'enabled');
-    bell.setAttribute('aria-label', status === 'enabled' ? 'Avisos activados' : 'Activar avisos');
+    bell.setAttribute('aria-label', status === 'enabled' ? 'Avisos activados. Toca para desactivar.' : 'Activar avisos');
   }
 
   return { enable, renderStatus, isSupported };
