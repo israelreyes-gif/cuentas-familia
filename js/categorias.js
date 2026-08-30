@@ -243,6 +243,25 @@ const Categorias = (function () {
       });
   }
 
+  /** SOLO PRUEBA: dispara ya la generación de gastos fijos, sin esperar al día 1. */
+  function generarFijosAhora(btn) {
+    UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span> Generando...');
+
+    AppData.generarFijosAhora()
+      .then((res) => {
+        UIHelpers.setButtonLoading(btn, false);
+        alert(res.message);
+        renderManageList();
+        renderSpendList();
+        Movimientos.renderLedgerList();
+        Movimientos.renderHeader();
+      })
+      .catch((err) => {
+        UIHelpers.setButtonLoading(btn, false);
+        alert(err.message || 'No se pudo generar los gastos fijos.');
+      });
+  }
+
   return {
     renderSpendList,
     renderManageList,
@@ -255,6 +274,7 @@ const Categorias = (function () {
     confirmReassignDelete,
     updateBudget,
     toggleFija,
+    generarFijosAhora,
   };
 
 })();
