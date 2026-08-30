@@ -22,6 +22,7 @@
  * Requiere:
  *   - binding D1 llamado "DB"
  *   - variable VAPID_PUBLIC_KEY
+ *   - variable VAPID_SUBJECT (formato mailto:tu-email@ejemplo.com)
  *   - variable cifrada VAPID_PRIVATE_KEY
  * -----------------------------------------------------------------------
  */
@@ -29,7 +30,6 @@
 const ALLOWED_ORIGIN = 'https://israelreyes-gif.github.io';
 const SESSION_DAYS = 7;
 const DESC_GASTO_FIJO = 'Gasto fijo mensual';
-const VAPID_SUBJECT = ALLOWED_ORIGIN;
 
 function corsHeaders() {
   return {
@@ -178,7 +178,6 @@ async function enviarAvisoNomina(env) {
       await sendWebPush(sub, payload, env);
       enviados++;
     } catch (err) {
-      // Si el navegador eliminó la suscripción (410/404), la borramos para no reintentar en vano.
       if (err.status === 404 || err.status === 410) {
         await env.DB.prepare('DELETE FROM push_subscriptions WHERE id = ?').bind(sub.id).run();
       }
@@ -224,9 +223,10 @@ async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
   return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
 }
 
-async function createVapidJwt(privateKey, audience) {
+/** El "subject" (env.VAPID_SUBJECT) identifica quién envía, con un email de contacto: mailto:... */
+async function createVapidJwt(privateKey, audience, subject) {
   const header = { typ: 'JWT', alg: 'ES256' };
-  const claims = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: VAPID_SUBJECT };
+  const claims = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject };
   const enc = new TextEncoder();
   const signingInput =
     b64urlEncode(enc.encode(JSON.stringify(header))) + '.' + b64urlEncode(enc.encode(JSON.stringify(claims)));
@@ -290,7 +290,7 @@ async function sendWebPush(sub, payloadText, env) {
   const audience = endpointUrl.origin;
 
   const privateKey = await importVapidPrivateKey(env.VAPID_PRIVATE_KEY, env.VAPID_PUBLIC_KEY);
-  const jwt = await createVapidJwt(privateKey, audience);
+  const jwt = await createVapidJwt(privateKey, audience, env.VAPID_SUBJECT);
   const body = await encryptPayload(payloadText, sub.p256dh, sub.auth);
 
   const res = await fetch(sub.endpoint, {
