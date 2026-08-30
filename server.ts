@@ -89,6 +89,24 @@ function error(message: string, status = 400) {
   return json({ error: message }, status);
 }
 
+// --- SOLO DIAGNÓSTICO: quitar en cuanto lo resolvamos ---
+function debugEnv() {
+  const accountId = Deno.env.get("CF_ACCOUNT_ID") || "";
+  const databaseId = Deno.env.get("CF_D1_DATABASE_ID") || "";
+  const apiToken = Deno.env.get("CF_API_TOKEN") || "";
+
+  function resumen(valor: string) {
+    if (!valor) return "VACÍO / NO DEFINIDA";
+    return `longitud=${valor.length}, empieza="${valor.slice(0, 4)}", termina="${valor.slice(-4)}"`;
+  }
+
+  return {
+    CF_ACCOUNT_ID: resumen(accountId),
+    CF_D1_DATABASE_ID: resumen(databaseId),
+    CF_API_TOKEN: resumen(apiToken),
+  };
+}
+
 // ---------------------------------------------------------------------
 // autenticación
 // ---------------------------------------------------------------------
@@ -389,6 +407,12 @@ Deno.serve(async (request: Request) => {
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
+
+  if (path === "/api/debug-env") {
+    return new Response(JSON.stringify(debugEnv(), null, 2), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   if (method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders() });
