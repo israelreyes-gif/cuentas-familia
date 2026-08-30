@@ -2,13 +2,17 @@
  * js/auth.js
  * -----------------------------------------------------------------------
  * Gestiona el login antes de poder usar la app.
- * PRUEBA TEMPORAL: apuntando a la nueva API en Vercel.
+ *
+ * El token de sesión se guarda en localStorage (no cookies, porque la app
+ * y la API viven en dominios distintos y las cookies entre dominios
+ * distintos no funcionan bien aquí). Cada petición a la API lleva ese
+ * token en la cabecera Authorization.
  * -----------------------------------------------------------------------
  */
 
 const Auth = (function () {
 
-  const API_BASE = 'https://cuentas-familia-two.vercel.app';
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
   const TOKEN_KEY = 'cuentas_casa_token';
 
   let onSuccessCallback = null;
