@@ -6,9 +6,8 @@
  * env.DB.prepare()... para que el resto del código sea igual que en
  * Cloudflare Workers.
  *
- * Incluye ahora la generación automática de gastos fijos el día 1 de
- * cada mes (vía Deno.cron, la tarea programada nativa de Deno Deploy),
- * más un endpoint manual protegido para probarlo sin esperar al día 1.
+ * Incluye la generación automática de gastos fijos el día 1 de cada mes
+ * (vía Deno.cron, la tarea programada nativa de Deno Deploy).
  * -----------------------------------------------------------------------
  */
 
@@ -124,12 +123,6 @@ async function generarGastosFijos(db: ReturnType<typeof dbFromEnv>) {
   }
 
   return creados;
-}
-
-/** Endpoint manual para probar la generación de gastos fijos sin esperar al día 1. */
-async function generarFijosManual(db: ReturnType<typeof dbFromEnv>) {
-  const creados = await generarGastosFijos(db);
-  return json({ ok: true, creados, message: `Se generaron ${creados} gasto(s) fijo(s) para este mes.` });
 }
 
 // ---------------------------------------------------------------------
@@ -456,9 +449,6 @@ Deno.serve(async (request: Request) => {
     }
     if (path === "/api/categorias" && method === "POST") {
       return await createCategoria(request, db);
-    }
-    if (path === "/api/categorias/generar-fijos" && method === "POST") {
-      return await generarFijosManual(db);
     }
     const catMatch = path.match(/^\/api\/categorias\/([^/]+)$/);
     if (catMatch && method === "PATCH") {
