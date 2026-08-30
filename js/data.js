@@ -1,16 +1,14 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app — conectado a la API real.
- * PRUEBA TEMPORAL: apuntando a la nueva API en Vercel en vez de
- * Cloudflare Workers, para comprobar que la migración funciona bien
- * antes de dar el cambio por definitivo.
+ * Módulo de datos de la app — conectado a la API real
+ * (Cloudflare Worker + D1) en vez de usar datos mock en memoria.
  * -----------------------------------------------------------------------
  */
 
 const AppData = (function () {
 
-  const API_BASE = 'https://cuentas-familia-two.vercel.app';
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
 
   let movimientos = [];
   let categorias = [];
