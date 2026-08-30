@@ -109,6 +109,11 @@
       <div class="manage-link" onclick="Categorias.showCatScreen('spend')">← Volver</div>
     </div>
 
+    <div class="push-card">
+      <p class="push-status" id="pushStatus"></p>
+      <button class="save-btn" id="pushBtn" onclick="Push.enable(this)">🔔 Activar aviso de nómina</button>
+    </div>
+
     <div class="add-cat-row">
       <div class="field">
         <label>Nueva categoría</label>
@@ -227,6 +232,7 @@
 
 <script src="js/ui-helpers.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/push.js"></script>
 <script src="js/data.js"></script>
 <script src="js/movimientos.js"></script>
 <script src="js/categorias.js"></script>
