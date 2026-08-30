@@ -30,6 +30,7 @@
 <div class="phone">
 
   <div class="cover">
+    <button class="push-bell hidden" id="pushBell" onclick="Push.enable(this)" aria-label="Activar avisos"></button>
     <div class="cover-eyebrow">Libro de cuentas</div>
     <h1>Cuentas de casa</h1>
     <div class="balance-label">Saldo del mes</div>
@@ -107,11 +108,6 @@
         <p class="section-sub">Añade, elimina o busca una categoría.</p>
       </div>
       <div class="manage-link" onclick="Categorias.showCatScreen('spend')">← Volver</div>
-    </div>
-
-    <div class="push-card">
-      <p class="push-status" id="pushStatus"></p>
-      <button class="save-btn" id="pushBtn" onclick="Push.enable(this)">🔔 Activar aviso de nómina</button>
     </div>
 
     <div class="add-cat-row">
