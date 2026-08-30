@@ -6,8 +6,10 @@
  * env.DB.prepare()... para que el resto del código sea igual que en
  * Cloudflare Workers.
  *
- * Incluye la generación automática de gastos fijos el día 1 de cada mes
- * (vía Deno.cron, la tarea programada nativa de Deno Deploy).
+ * Incluye:
+ *   - generación automática de gastos fijos el día 1 de cada mes
+ *   - envío real de notificaciones push (aviso de nómina), también el
+ *     día 1, con la misma criptografía VAPID que usaba Cloudflare
  * -----------------------------------------------------------------------
  */
 
@@ -95,11 +97,6 @@ function error(message: string, status = 400) {
 // gastos fijos automáticos
 // ---------------------------------------------------------------------
 
-/**
- * Crea un gasto por cada categoría "fija" con presupuesto > 0, fechado el
- * día 1 del mes en curso, usando el presupuesto como importe. No duplica
- * si ya existe uno igual ese mes para esa categoría.
- */
 async function generarGastosFijos(db: ReturnType<typeof dbFromEnv>) {
   const hoy = new Date();
   const primerDiaMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
@@ -123,6 +120,163 @@ async function generarGastosFijos(db: ReturnType<typeof dbFromEnv>) {
   }
 
   return creados;
+}
+
+// ---------------------------------------------------------------------
+// notificaciones push: criptografía VAPID + cifrado aes128gcm
+// (misma lógica que en Cloudflare, usando Web Crypto — disponible igual
+// en Deno)
+// ---------------------------------------------------------------------
+
+function b64urlEncode(bytes: Uint8Array) {
+  let str = "";
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function b64urlDecode(str: string) {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
+  const bin = atob(str);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function concatBytes(...arrays: Uint8Array[]) {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) { out.set(a, offset); offset += a.length; }
+  return out;
+}
+
+async function importVapidPrivateKey(privateKeyB64url: string, publicKeyB64url: string) {
+  const pub = b64urlDecode(publicKeyB64url);
+  const x = pub.slice(1, 33);
+  const y = pub.slice(33, 65);
+  const jwk = {
+    kty: "EC", crv: "P-256",
+    x: b64urlEncode(x), y: b64urlEncode(y), d: privateKeyB64url,
+    ext: true,
+  };
+  return crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+}
+
+async function createVapidJwt(privateKey: CryptoKey, audience: string, subject: string) {
+  const header = { typ: "JWT", alg: "ES256" };
+  const claims = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject };
+  const enc = new TextEncoder();
+  const signingInput =
+    b64urlEncode(enc.encode(JSON.stringify(header))) + "." + b64urlEncode(enc.encode(JSON.stringify(claims)));
+
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" }, privateKey, enc.encode(signingInput)
+  );
+  return signingInput + "." + b64urlEncode(new Uint8Array(signature));
+}
+
+async function encryptPayload(payloadText: string, p256dhB64url: string, authB64url: string) {
+  const enc = new TextEncoder();
+  const uaPublic = b64urlDecode(p256dhB64url);
+  const authSecret = b64urlDecode(authB64url);
+
+  const serverKeyPair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPublicRaw = new Uint8Array(await crypto.subtle.exportKey("raw", serverKeyPair.publicKey));
+
+  const subscriberPublicKey = await crypto.subtle.importKey(
+    "raw", uaPublic, { name: "ECDH", namedCurve: "P-256" }, false, []
+  );
+  const ecdhSecret = new Uint8Array(
+    await crypto.subtle.deriveBits({ name: "ECDH", public: subscriberPublicKey }, serverKeyPair.privateKey, 256)
+  );
+
+  async function hmacSha256(keyBytes: Uint8Array, dataBytes: Uint8Array) {
+    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    return new Uint8Array(await crypto.subtle.sign("HMAC", key, dataBytes));
+  }
+
+  const prkKey = await hmacSha256(authSecret, ecdhSecret);
+  const keyInfo = concatBytes(enc.encode("WebPush: info\0"), uaPublic, asPublicRaw);
+  const ikm = (await hmacSha256(prkKey, concatBytes(keyInfo, new Uint8Array([1])))).slice(0, 32);
+
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmacSha256(salt, ikm);
+
+  const cekInfo = enc.encode("Content-Encoding: aes128gcm\0");
+  const cek = (await hmacSha256(prk, concatBytes(cekInfo, new Uint8Array([1])))).slice(0, 16);
+
+  const nonceInfo = enc.encode("Content-Encoding: nonce\0");
+  const nonce = (await hmacSha256(prk, concatBytes(nonceInfo, new Uint8Array([1])))).slice(0, 12);
+
+  const plaintext = concatBytes(enc.encode(payloadText), new Uint8Array([2]));
+
+  const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, plaintext)
+  );
+
+  const recordSize = new Uint8Array(4);
+  new DataView(recordSize.buffer).setUint32(0, 4096, false);
+
+  const header = concatBytes(salt, recordSize, new Uint8Array([asPublicRaw.length]), asPublicRaw);
+  return concatBytes(header, ciphertext);
+}
+
+interface PushSub {
+  id: number;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+async function sendWebPush(sub: PushSub, payloadText: string) {
+  const endpointUrl = new URL(sub.endpoint);
+  const audience = endpointUrl.origin;
+
+  const publicKey = Deno.env.get("VAPID_PUBLIC_KEY")!;
+  const privateKey = await importVapidPrivateKey(Deno.env.get("VAPID_PRIVATE_KEY")!, publicKey);
+  const jwt = await createVapidJwt(privateKey, audience, Deno.env.get("VAPID_SUBJECT")!);
+  const body = await encryptPayload(payloadText, sub.p256dh, sub.auth);
+
+  const res = await fetch(sub.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "Content-Encoding": "aes128gcm",
+      "TTL": "86400",
+      "Authorization": `vapid t=${jwt}, k=${publicKey}`,
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    const err = new Error("Push service respondió " + res.status);
+    (err as any).status = res.status;
+    throw err;
+  }
+}
+
+async function enviarAvisoNomina(db: ReturnType<typeof dbFromEnv>) {
+  const { results: subs } = await db.prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions").all();
+
+  const payload = JSON.stringify({
+    title: "Cuentas de casa",
+    body: "Ya es día 1 — no olvides registrar la nómina de este mes.",
+  });
+
+  let enviados = 0;
+  for (const sub of subs as PushSub[]) {
+    try {
+      await sendWebPush(sub, payload);
+      enviados++;
+    } catch (err) {
+      if ((err as any).status === 404 || (err as any).status === 410) {
+        await db.prepare("DELETE FROM push_subscriptions WHERE id = ?").bind(sub.id).run();
+      }
+    }
+  }
+  return enviados;
 }
 
 // ---------------------------------------------------------------------
@@ -390,8 +544,7 @@ async function deleteMovimiento(id: number, db: ReturnType<typeof dbFromEnv>) {
 }
 
 // ---------------------------------------------------------------------
-// notificaciones push (guardar/borrar suscripción — el ENVÍO se añade
-// en el siguiente paso)
+// notificaciones push (guardar/borrar suscripción)
 // ---------------------------------------------------------------------
 
 async function pushSubscribe(request: Request, db: ReturnType<typeof dbFromEnv>) {
@@ -483,10 +636,15 @@ Deno.serve(async (request: Request) => {
 });
 
 // ---------------------------------------------------------------------
-// tarea programada: el día 1 de cada mes a las 03:00 UTC
+// tareas programadas: ambas el día 1 de cada mes
 // ---------------------------------------------------------------------
 
 Deno.cron("gastos-fijos-mensuales", "0 3 1 * *", async () => {
   const db = dbFromEnv();
   await generarGastosFijos(db);
+});
+
+Deno.cron("aviso-nomina", "0 6 1 * *", async () => {
+  const db = dbFromEnv();
+  await enviarAvisoNomina(db);
 });
