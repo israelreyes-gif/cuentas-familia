@@ -35,3 +35,39 @@
 }
 .balance-amount.positive{color:#7FDCAE;}
 .balance-sub{font-size:12px;color:#9AA69C;margin-top:2px;}
+
+/*
+ * Icono de aviso de nómina, en la esquina superior derecha de la
+ * cabecera. Sin activar: campana atenuada, pulsable para activar.
+ * Activado: campana dorada, informativa (no hace falta pulsarla).
+ * Se oculta del todo si el navegador no soporta notificaciones push,
+ * o mientras no se sabe aún el estado (justo al arrancar).
+ */
+.push-bell{
+  position:absolute;
+  top:calc(22px + env(safe-area-inset-top));
+  right:22px;
+  width:34px;height:34px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06);
+  color:#9AA69C;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  padding:0;
+}
+.push-bell::before{
+  content:"";
+  width:16px;height:16px;
+  background-color:currentColor;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/%3E%3Cpath d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/%3E%3Cpath d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/%3E%3C/svg%3E");
+  -webkit-mask-size:contain;mask-size:contain;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+}
+.push-bell.enabled{
+  color:var(--gold);
+  border-color:var(--gold);
+  background:rgba(216,171,92,.12);
+  cursor:default;
+}
