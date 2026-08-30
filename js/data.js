@@ -1,14 +1,14 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app — conectado a la API real
- * (Cloudflare Worker + D1) en vez de usar datos mock en memoria.
+ * Módulo de datos de la app — conectado a la API real.
+ * PRUEBA TEMPORAL: apuntando a la nueva API en Deno Deploy.
  * -----------------------------------------------------------------------
  */
 
 const AppData = (function () {
 
-  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+  const API_BASE = 'https://cuentas-familia.israelreyes-gif.deno.net';
 
   let movimientos = [];
   let categorias = [];
