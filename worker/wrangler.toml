@@ -7,8 +7,8 @@ binding = "DB"
 database_name = "cuentas-familia-db"
 database_id = "61ec2b37-c5b9-46d3-98aa-649ddd89b333"
 
-# Se ejecuta a las 03:00 UTC del día 1 de cada mes: genera automáticamente
-# un gasto por cada categoría marcada como "fija", usando su presupuesto
-# como importe.
+# Dos avisos: el día 1 genera los gastos fijos (03:00 UTC) y envía la
+# notificación push para registrar la nómina (06:00 UTC ≈ 8:00 en España,
+# con hasta 1h de desfase en los cambios de hora, aceptado a propósito).
 [triggers]
-crons = ["0 3 1 * *"]
+crons = ["0 3 1 * *", "0 6 1 * *"]
