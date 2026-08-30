@@ -1,15 +1,16 @@
 /**
  * js/push.js
  * -----------------------------------------------------------------------
- * Gestiona la activación/desactivación de notificaciones push.
- * PRUEBA TEMPORAL: apuntando a la nueva API en Vercel.
+ * Gestiona la activación/desactivación de notificaciones push, mediante
+ * la campana de la cabecera (ver index.html): tocarla activa los avisos
+ * si están apagados, o los desactiva si ya estaban encendidos.
  * -----------------------------------------------------------------------
  */
 
 const Push = (function () {
 
   const VAPID_PUBLIC_KEY = 'BImfwk2vgsDeU6EWmQVYAGFX-_7J3AiQoVYc31xWYtSSX5OzwX41WL9qNqE_ZGiRNk3UoNv0FviPDncKmGiWtaQ';
-  const API_BASE = 'https://cuentas-familia-two.vercel.app';
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
