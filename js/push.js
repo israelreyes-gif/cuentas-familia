@@ -3,8 +3,11 @@
  * -----------------------------------------------------------------------
  * Gestiona la activación de notificaciones push en este dispositivo:
  * pide permiso, se suscribe al servicio de notificaciones del navegador
- * con la clave pública VAPID, y guarda esa suscripción en el servidor
- * para que el Worker pueda enviarle avisos más adelante.
+ * con la clave pública VAPID, y guarda esa suscripción en el servidor.
+ *
+ * Se controla con un icono de campana en la cabecera (ver index.html):
+ * atenuada y pulsable si no está activada, dorada e informativa si ya
+ * lo está.
  * -----------------------------------------------------------------------
  */
 
@@ -35,12 +38,19 @@ const Push = (function () {
   }
 
   async function enable(btn) {
-    if (!isSupported()) {
+    const estadoActual = await getStatus();
+    if (estadoActual === 'enabled') return; // ya activado, no hace nada al tocarla
+
+    if (estadoActual === 'unsupported') {
       alert('Las notificaciones no están disponibles aquí. En iPhone, la app tiene que estar instalada desde "Compartir → Añadir a pantalla de inicio" (no vale desde una pestaña normal de Safari).');
       return;
     }
+    if (estadoActual === 'denied') {
+      alert('Bloqueaste las notificaciones para esta app. Actívalas desde los Ajustes de iPhone → Notificaciones → Cuentas de casa, y vuelve a abrir la app.');
+      return;
+    }
 
-    if (btn) UIHelpers.setButtonLoading(btn, true, '<span class="spinner on-dark"></span>');
+    if (btn) btn.style.opacity = '.5';
 
     try {
       const permission = await Notification.requestPermission();
@@ -72,30 +82,25 @@ const Push = (function () {
     } catch (err) {
       alert(err.message || 'No se pudieron activar las notificaciones.');
     } finally {
-      if (btn) UIHelpers.setButtonLoading(btn, false);
+      if (btn) btn.style.opacity = '';
     }
   }
 
-  /** Pinta el estado actual (activado / bloqueado / no disponible) en la pantalla de Administrar categorías. */
+  /** Pinta el icono de campana según el estado actual. Se llama al arrancar la app y tras activar. */
   async function renderStatus() {
-    const el = document.getElementById('pushStatus');
-    const btn = document.getElementById('pushBtn');
-    if (!el || !btn) return;
+    const bell = document.getElementById('pushBell');
+    if (!bell) return;
 
     const status = await getStatus();
-    if (status === 'enabled') {
-      el.textContent = '✓ Avisos activados en este dispositivo.';
-      btn.classList.add('hidden');
-    } else if (status === 'denied') {
-      el.textContent = 'Bloqueaste las notificaciones para esta app. Actívalas desde los Ajustes de iPhone → Notificaciones → Cuentas de casa.';
-      btn.classList.add('hidden');
-    } else if (status === 'unsupported') {
-      el.textContent = 'Instala la app desde "Compartir → Añadir a pantalla de inicio" para poder activar avisos.';
-      btn.classList.add('hidden');
-    } else {
-      el.textContent = 'Recibe un aviso el día 1 de cada mes para registrar la nómina.';
-      btn.classList.remove('hidden');
+
+    if (status === 'unsupported') {
+      bell.classList.add('hidden');
+      return;
     }
+
+    bell.classList.remove('hidden');
+    bell.classList.toggle('enabled', status === 'enabled');
+    bell.setAttribute('aria-label', status === 'enabled' ? 'Avisos activados' : 'Activar avisos');
   }
 
   return { enable, renderStatus, isSupported };
