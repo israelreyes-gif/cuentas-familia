@@ -2,9 +2,9 @@
  * Cloudflare Worker — API de "Cuentas de casa"
  * -----------------------------------------------------------------------
  * ⚠️ ESTE WORKER YA NO RECIBE TRÁFICO DE LA APP (la API vive ahora en
- * Deno Deploy). Se mantiene solo temporalmente para recuperar la clave
- * privada VAPID guardada aquí como Secret. Se borrará en la limpieza
- * final de Cloudflare.
+ * Deno Deploy). Se mantiene solo por si hace falta consultarlo mientras
+ * se termina de confirmar que todo funciona bien en Deno. Se borrará en
+ * la limpieza final de Cloudflare.
  * -----------------------------------------------------------------------
  */
 
@@ -39,11 +39,6 @@ export default {
 
     if (method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders() });
-    }
-
-    // --- SOLO RECUPERACIÓN TEMPORAL: quitar en cuanto se copie la clave ---
-    if (path === '/api/debug-vapid-private-key') {
-      return json({ VAPID_PRIVATE_KEY: env.VAPID_PRIVATE_KEY || 'NO DEFINIDA' });
     }
 
     try {
