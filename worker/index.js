@@ -14,6 +14,7 @@
  *   POST   /api/movimientos
  *   DELETE /api/movimientos/:id
  *   POST   /api/push/subscribe        -> guarda la suscripción push del dispositivo
+ *   POST   /api/push/unsubscribe      -> borra la suscripción push del dispositivo
  *
  * Tareas programadas (cron, ver wrangler.toml), ambas el día 1 de cada mes:
  *   03:00 UTC -> genera los gastos fijos del mes
@@ -99,6 +100,9 @@ export default {
       if (path === '/api/push/subscribe' && method === 'POST') {
         return await pushSubscribe(request, env);
       }
+      if (path === '/api/push/unsubscribe' && method === 'POST') {
+        return await pushUnsubscribe(request, env);
+      }
 
       return error('Ruta no encontrada', 404);
     } catch (err) {
@@ -164,6 +168,15 @@ async function pushSubscribe(request, env) {
   return json({ ok: true });
 }
 
+async function pushUnsubscribe(request, env) {
+  const body = await request.json();
+  const endpoint = body && body.endpoint;
+  if (!endpoint) return error('Falta el endpoint de la suscripción');
+
+  await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).run();
+  return json({ ok: true });
+}
+
 async function enviarAvisoNomina(env) {
   const { results: subs } = await env.DB.prepare('SELECT id, endpoint, p256dh, auth FROM push_subscriptions').all();
 
@@ -212,7 +225,7 @@ function concatBytes(...arrays) {
 }
 
 async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
-  const pub = b64urlDecode(publicKeyB64url); // 65 bytes: 0x04 || x(32) || y(32)
+  const pub = b64urlDecode(publicKeyB64url);
   const x = pub.slice(1, 33);
   const y = pub.slice(33, 65);
   const jwk = {
@@ -223,7 +236,6 @@ async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
   return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
 }
 
-/** El "subject" (env.VAPID_SUBJECT) identifica quién envía, con un email de contacto: mailto:... */
 async function createVapidJwt(privateKey, audience, subject) {
   const header = { typ: 'JWT', alg: 'ES256' };
   const claims = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject };
@@ -237,7 +249,6 @@ async function createVapidJwt(privateKey, audience, subject) {
   return signingInput + '.' + b64urlEncode(new Uint8Array(signature));
 }
 
-/** Cifra el contenido de la notificación según RFC 8291 (aes128gcm). */
 async function encryptPayload(payloadText, p256dhB64url, authB64url) {
   const enc = new TextEncoder();
   const uaPublic = b64urlDecode(p256dhB64url);
@@ -271,7 +282,7 @@ async function encryptPayload(payloadText, p256dhB64url, authB64url) {
   const nonceInfo = enc.encode('Content-Encoding: nonce\0');
   const nonce = (await hmacSha256(prk, concatBytes(nonceInfo, new Uint8Array([1])))).slice(0, 12);
 
-  const plaintext = concatBytes(enc.encode(payloadText), new Uint8Array([2])); // 0x02 = delimitador, sin padding extra
+  const plaintext = concatBytes(enc.encode(payloadText), new Uint8Array([2]));
 
   const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
   const ciphertext = new Uint8Array(
