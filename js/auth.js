@@ -2,17 +2,13 @@
  * js/auth.js
  * -----------------------------------------------------------------------
  * Gestiona el login antes de poder usar la app.
- *
- * El token de sesión se guarda en localStorage (no cookies, porque la app
- * y la API viven en dominios distintos y las cookies entre dominios
- * distintos no funcionan bien aquí). Cada petición a la API lleva ese
- * token en la cabecera Authorization.
+ * PRUEBA TEMPORAL: apuntando a la nueva API en Vercel.
  * -----------------------------------------------------------------------
  */
 
 const Auth = (function () {
 
-  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+  const API_BASE = 'https://cuentas-familia-two.vercel.app';
   const TOKEN_KEY = 'cuentas_casa_token';
 
   let onSuccessCallback = null;
@@ -36,7 +32,6 @@ const Auth = (function () {
     if (nav) nav.classList.add('hidden');
   }
 
-  /** Se llama al arrancar la app: si ya hay sesión guardada, entra directo; si no, muestra el login. */
   function boot(onSuccess) {
     onSuccessCallback = onSuccess;
     if (getToken()) {
@@ -46,7 +41,6 @@ const Auth = (function () {
     }
   }
 
-  /** Se llama cuando la API responde 401 (sesión caducada o no válida). */
   function forceLogout() {
     clearToken();
     showLoginScreen();
@@ -88,7 +82,6 @@ const Auth = (function () {
     }
   }
 
-  // ---- API pública del módulo ----
   return {
     boot,
     login,
