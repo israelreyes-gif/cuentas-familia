@@ -2,7 +2,7 @@
  * js/categorias.js
  * -----------------------------------------------------------------------
  * Pestaña "Categorías": gasto del mes por categoría + administración
- * (añadir, editar presupuesto, marcar como fija, eliminar).
+ * (añadir, editar presupuesto, marcar como fija, eliminar, avisos push).
  * -----------------------------------------------------------------------
  */
 
@@ -109,6 +109,7 @@ const Categorias = (function () {
       document.getElementById('view-cat-manage').classList.add('active');
       buildColorSwatches();
       renderManageList();
+      if (typeof Push !== 'undefined') Push.renderStatus();
     } else {
       document.getElementById('view-cat-spend').classList.add('active');
       renderSpendList();
