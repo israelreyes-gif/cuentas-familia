@@ -182,13 +182,6 @@ const AppData = (function () {
     return colorPalette;
   }
 
-  /** SOLO PRUEBA: dispara ya la generación de gastos fijos, sin esperar al día 1. */
-  async function generarFijosAhora() {
-    const res = await apiFetch('/api/categorias/generar-fijos', { method: 'POST' });
-    await init();
-    return res;
-  }
-
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
   function getAvailableYears() {
@@ -254,7 +247,6 @@ const AppData = (function () {
     deleteCategoria,
     updateCategoriaPresupuesto,
     updateCategoriaFija,
-    generarFijosAhora,
     getColorPalette,
     getAvailableYears,
     getYearData,
