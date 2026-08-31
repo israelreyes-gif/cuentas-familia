@@ -1,13 +1,14 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app — conectado a la API real en Deno Deploy.
+ * Módulo de datos de la app — conectado a la API real
+ * (Cloudflare Worker + D1).
  * -----------------------------------------------------------------------
  */
 
 const AppData = (function () {
 
-  const API_BASE = 'https://cuentas-familia.israelreyes-gif.deno.net';
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
 
   let movimientos = [];
   let categorias = [];
