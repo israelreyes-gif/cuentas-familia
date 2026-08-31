@@ -7,8 +7,4 @@ binding = "DB"
 database_name = "cuentas-familia-db"
 database_id = "61ec2b37-c5b9-46d3-98aa-649ddd89b333"
 
-# Dos avisos: el día 1 genera los gastos fijos (03:00 UTC) y envía la
-# notificación push para registrar la nómina (06:00 UTC ≈ 8:00 en España,
-# con hasta 1h de desfase en los cambios de hora, aceptado a propósito).
-[triggers]
 crons = ["0 3 1 * *", "0 6 1 * *"]
