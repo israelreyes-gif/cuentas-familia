@@ -2,13 +2,12 @@
  * js/auth.js
  * -----------------------------------------------------------------------
  * Gestiona el login antes de poder usar la app.
- * PRUEBA TEMPORAL: apuntando a la nueva API en Deno Deploy.
  * -----------------------------------------------------------------------
  */
 
 const Auth = (function () {
 
-  const API_BASE = 'https://cuentas-familia.israelreyes-gif.deno.net';
+  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
   const TOKEN_KEY = 'cuentas_casa_token';
 
   let onSuccessCallback = null;
