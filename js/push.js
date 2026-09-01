@@ -1,15 +1,15 @@
 /**
  * js/push.js
  * -----------------------------------------------------------------------
- * Gestiona la activación/desactivación de notificaciones push, mediante
- * la campana de la cabecera.
+ * Gestiona la activación/desactivación de notificaciones push, a través
+ * del proxy compartido en Deno.
  * -----------------------------------------------------------------------
  */
 
 const Push = (function () {
 
   const VAPID_PUBLIC_KEY = 'BImfwk2vgsDeU6EWmQVYAGFX-_7J3AiQoVYc31xWYtSSX5OzwX41WL9qNqE_ZGiRNk3UoNv0FviPDncKmGiWtaQ';
-  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
 
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
