@@ -2,8 +2,7 @@
  * js/data.js
  * -----------------------------------------------------------------------
  * Módulo de datos de la app — conectado a la API real a través del
- * proxy compartido en Deno (que reenvía al Worker de Cloudflare), para
- * evitar el bloqueo de LaLiga sobre las IPs de Cloudflare.
+ * proxy compartido en Deno.
  * -----------------------------------------------------------------------
  */
 
@@ -13,6 +12,7 @@ const AppData = (function () {
 
   let movimientos = [];
   let categorias = [];
+  let saldoInicial = 0;
 
   const colorPalette = ["#B7912B", "#C1443D", "#1E8A63", "#6B5B95", "#3E7C8C", "#8C5E3E", "#5A5F73", "#B0567E"];
 
@@ -50,12 +50,25 @@ const AppData = (function () {
   }
 
   async function init() {
-    const [cats, movs] = await Promise.all([
+    const [cats, movs, config] = await Promise.all([
       apiFetch('/api/categorias'),
       apiFetch('/api/movimientos'),
+      apiFetch('/api/config'),
     ]);
     categorias = cats;
     movimientos = movs;
+    saldoInicial = Number(config.saldo_inicial) || 0;
+  }
+
+  function getSaldoInicial() {
+    return saldoInicial;
+  }
+
+  /** Saldo acumulado real: saldo inicial + todos los ingresos - todos los gastos, desde siempre. */
+  function getSaldoActual() {
+    const totalIngresos = movimientos.filter(m => m.tipo === 'income').reduce((sum, m) => sum + m.importe, 0);
+    const totalGastos = movimientos.filter(m => m.tipo === 'expense').reduce((sum, m) => sum + m.importe, 0);
+    return saldoInicial + totalIngresos - totalGastos;
   }
 
   function getMovimientos() {
@@ -237,6 +250,8 @@ const AppData = (function () {
 
   return {
     init,
+    getSaldoInicial,
+    getSaldoActual,
     getMovimientos,
     addMovimiento,
     deleteMovimiento,
