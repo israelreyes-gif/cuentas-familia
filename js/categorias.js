@@ -57,6 +57,29 @@ const Categorias = (function () {
     el.textContent = formatMoney(total);
   }
 
+  const MESES_LARGO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const RECURRENCIAS = [
+    { value: 'mensual', label: 'Mes (mensual)' },
+    { value: 'bimestral', label: '2 meses (bimestral)' },
+    { value: 'trimestral', label: '3 meses (trimestral)' },
+    { value: 'cuatrimestral', label: '4 meses (cuatrimestral)' },
+    { value: 'semestral', label: '6 meses (semestral)' },
+    { value: 'anual', label: 'Año (anual)' },
+  ];
+
+  function buildMesInicioOptions(seleccionado) {
+    return MESES_LARGO.map((nombre, i) => {
+      const valor = i + 1;
+      return `<option value="${valor}" ${valor === seleccionado ? 'selected' : ''}>${nombre}</option>`;
+    }).join('');
+  }
+
+  function buildRecurrenciaOptions(seleccionada) {
+    return RECURRENCIAS.map(r =>
+      `<option value="${r.value}" ${r.value === seleccionada ? 'selected' : ''}>${r.label}</option>`
+    ).join('');
+  }
+
   function renderManageList() {
     const el = document.getElementById('manageList');
     if (!el) return;
@@ -84,6 +107,25 @@ const Categorias = (function () {
           <span class="spinner field-spinner"></span>
         </span>
         <button class="delete-btn" onclick="Categorias.deleteCategory('${escapeJsString(c.nombre)}', this)">✕</button>
+        ${c.fija ? `
+          <div class="recur-block">
+            <div class="recur-title">Recurrencia</div>
+            <div class="recur-fields">
+              <div class="mini-field">
+                <label>Primer pago</label>
+                <select onchange="Categorias.updateRecurrencia('${escapeJsString(c.nombre)}', this)">
+                  ${buildMesInicioOptions(c.mes_inicio || 1)}
+                </select>
+              </div>
+              <div class="mini-field">
+                <label>Cada</label>
+                <select onchange="Categorias.updateRecurrencia('${escapeJsString(c.nombre)}', this)">
+                  ${buildRecurrenciaOptions(c.recurrencia || 'mensual')}
+                </select>
+              </div>
+            </div>
+          </div>
+        ` : ''}
       </div>
     `).join('');
   }
@@ -119,6 +161,8 @@ const Categorias = (function () {
     const input = document.getElementById('newCatName');
     const budgetInput = document.getElementById('newCatBudget');
     const fijaInput = document.getElementById('newCatFija');
+    const mesInicioInput = document.getElementById('newCatMesInicio');
+    const recurrenciaInput = document.getElementById('newCatRecurrencia');
     const btn = document.querySelector('.add-cat-btn');
 
     const nombre = input.value.trim();
@@ -132,14 +176,17 @@ const Categorias = (function () {
 
     const presupuesto = Math.max(0, parseFloat(budgetInput.value) || 0);
     const fija = fijaInput ? fijaInput.checked : false;
+    const mesInicio = fija && mesInicioInput ? Number(mesInicioInput.value) : undefined;
+    const recurrencia = fija && recurrenciaInput ? recurrenciaInput.value : undefined;
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.addCategoria({ nombre, color: selectedColor, presupuesto, fija })
+    AppData.addCategoria({ nombre, color: selectedColor, presupuesto, fija, mesInicio, recurrencia })
       .then(() => {
         input.value = '';
         budgetInput.value = '';
         if (fijaInput) fijaInput.checked = false;
+        toggleNewCatRecurBlock(false);
         renderManageList();
         Movimientos.renderCategorySelect();
       })
@@ -233,14 +280,36 @@ const Categorias = (function () {
     checkboxEl.disabled = true;
     AppData.updateCategoriaFija(nombre, checked)
       .then(() => {
-        checkboxEl.disabled = false;
         Movimientos.renderCategorySelect();
+        renderManageList();
       })
       .catch((err) => {
         checkboxEl.checked = !checked;
         checkboxEl.disabled = false;
         alert(err.message || 'No se pudo actualizar la categoría.');
       });
+  }
+
+  function updateRecurrencia(nombre, selectEl) {
+    const bloque = selectEl.closest('.recur-block');
+    const selects = bloque.querySelectorAll('select');
+    const mesInicio = Number(selects[0].value);
+    const recurrencia = selects[1].value;
+
+    selects.forEach(s => s.disabled = true);
+    AppData.updateCategoriaRecurrencia(nombre, recurrencia, mesInicio)
+      .catch((err) => {
+        alert(err.message || 'No se pudo actualizar la recurrencia.');
+      })
+      .finally(() => {
+        selects.forEach(s => s.disabled = false);
+      });
+  }
+
+  function toggleNewCatRecurBlock(checked) {
+    const bloque = document.getElementById('newCatRecurBlock');
+    if (!bloque) return;
+    bloque.classList.toggle('hidden', !checked);
   }
 
   return {
@@ -255,6 +324,8 @@ const Categorias = (function () {
     confirmReassignDelete,
     updateBudget,
     toggleFija,
+    updateRecurrencia,
+    toggleNewCatRecurBlock,
   };
 
 })();
