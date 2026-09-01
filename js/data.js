@@ -1,14 +1,15 @@
 /**
  * js/data.js
  * -----------------------------------------------------------------------
- * Módulo de datos de la app — conectado a la API real
- * (Cloudflare Worker + D1).
+ * Módulo de datos de la app — conectado a la API real a través del
+ * proxy compartido en Deno (que reenvía al Worker de Cloudflare), para
+ * evitar el bloqueo de LaLiga sobre las IPs de Cloudflare.
  * -----------------------------------------------------------------------
  */
 
 const AppData = (function () {
 
-  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
 
   let movimientos = [];
   let categorias = [];
