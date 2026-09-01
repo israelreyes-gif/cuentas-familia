@@ -124,8 +124,42 @@
     <div class="color-swatches" id="colorSwatches"></div>
 
     <label class="new-cat-fija">
-      <input type="checkbox" id="newCatFija"> Marcar como categoría fija
+      <input type="checkbox" id="newCatFija" onchange="Categorias.toggleNewCatRecurBlock(this.checked)"> Marcar como categoría fija
     </label>
+
+    <div class="recur-block hidden" id="newCatRecurBlock">
+      <div class="recur-title">Recurrencia</div>
+      <div class="recur-fields">
+        <div class="mini-field">
+          <label>Primer pago</label>
+          <select id="newCatMesInicio">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="mini-field">
+          <label>Cada</label>
+          <select id="newCatRecurrencia">
+            <option value="mensual">Mes (mensual)</option>
+            <option value="bimestral">2 meses (bimestral)</option>
+            <option value="trimestral">3 meses (trimestral)</option>
+            <option value="cuatrimestral">4 meses (cuatrimestral)</option>
+            <option value="semestral">6 meses (semestral)</option>
+            <option value="anual">Año (anual)</option>
+          </select>
+        </div>
+      </div>
+    </div>
 
     <div class="manage-list" id="manageList" style="margin-top:20px;"></div>
   </div>
