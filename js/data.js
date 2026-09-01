@@ -145,6 +145,44 @@ const AppData = (function () {
     return a.nombre.localeCompare(b.nombre, 'es');
   }
 
+  const RECURRENCIA_INTERVALOS = { mensual: 1, bimestral: 2, trimestral: 3, cuatrimestral: 4, semestral: 6, anual: 12 };
+
+  /** Misma regla que usa el backend para decidir si a una categoría fija "le toca" un mes concreto (1-12). */
+  function tocaMes(cat, mesNumero) {
+    const intervalo = RECURRENCIA_INTERVALOS[cat.recurrencia] || 1;
+    const mesInicio = cat.mes_inicio || 1;
+    const diff = ((mesNumero - mesInicio) % 12 + 12) % 12;
+    return diff % intervalo === 0;
+  }
+
+  const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  /** Gastos fijos previstos para los próximos 2 meses (sin contar el actual), respetando la recurrencia de cada categoría. */
+  function getProximosGastosFijos() {
+    const hoy = new Date();
+    const resultado = [];
+
+    for (let offset = 1; offset <= 2; offset++) {
+      const fecha = new Date(hoy.getFullYear(), hoy.getMonth() + offset, 1);
+      const mesNumero = fecha.getMonth() + 1;
+
+      const cats = categorias
+        .filter(c => c.fija && c.presupuesto > 0 && tocaMes(c, mesNumero))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+
+      const total = cats.reduce((sum, c) => sum + c.presupuesto, 0);
+
+      resultado.push({
+        mes: MESES_LARGO[fecha.getMonth()],
+        anio: fecha.getFullYear(),
+        categorias: cats,
+        total,
+      });
+    }
+
+    return resultado;
+  }
+
   async function addCategoria({ nombre, color, presupuesto, fija, recurrencia, mesInicio }) {
     const nueva = await apiFetch('/api/categorias', {
       method: 'POST',
@@ -288,6 +326,7 @@ const AppData = (function () {
     updateCategoriaPresupuesto,
     updateCategoriaFija,
     updateCategoriaRecurrencia,
+    getProximosGastosFijos,
     getColorPalette,
     getAvailableYears,
     getYearData,
