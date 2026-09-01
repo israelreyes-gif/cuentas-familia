@@ -124,11 +124,11 @@ const AppData = (function () {
   function getCategoriasConGasto() {
     return categorias
       .filter(c => c.gastado > 0 || c.presupuesto > 0)
-      .sort((a, b) => b.gastado - a.gastado);
+      .sort(compararPorTipoYNombre);
   }
 
   function getCategoriasOrdenadas() {
-    return [...categorias].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    return [...categorias].sort(compararPorTipoYNombre);
   }
 
   function getCategoriasParaGasto() {
@@ -137,6 +137,12 @@ const AppData = (function () {
 
   function categoriaExiste(nombre) {
     return categorias.some(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+  }
+
+  /** Variables primero (A-Z), después fijas (A-Z). Se usa en ambas vistas de categorías. */
+  function compararPorTipoYNombre(a, b) {
+    if (!!a.fija !== !!b.fija) return a.fija ? 1 : -1;
+    return a.nombre.localeCompare(b.nombre, 'es');
   }
 
   async function addCategoria({ nombre, color, presupuesto, fija, recurrencia, mesInicio }) {
