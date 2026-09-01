@@ -1,9 +1,9 @@
 /**
  * Cloudflare Worker — API de "Cuentas de casa"
  * -----------------------------------------------------------------------
- * Vuelto a activar temporalmente mientras se confirma el proxy en Deno
- * para el resto de apps. Incluye login, categorías, movimientos, gastos
- * fijos automáticos y envío real de notificaciones push.
+ * Incluye login, categorías, movimientos, gastos fijos automáticos,
+ * notificaciones push, y ahora el saldo inicial (config) para calcular
+ * el saldo acumulado real de la cuenta, no solo el del mes en curso.
  * -----------------------------------------------------------------------
  */
 
@@ -51,6 +51,10 @@ export default {
       const auth = await requireAuth(request, env);
       if (!auth.ok) return auth.response;
 
+      if (path === '/api/config' && method === 'GET') {
+        return await getConfig(env);
+      }
+
       if (path === '/api/categorias' && method === 'GET') {
         return await getCategorias(env);
       }
@@ -97,6 +101,15 @@ export default {
     }
   },
 };
+
+// ---------------------------------------------------------------------
+// configuración (saldo inicial)
+// ---------------------------------------------------------------------
+
+async function getConfig(env) {
+  const row = await env.DB.prepare("SELECT valor FROM config WHERE clave = 'saldo_inicial'").first();
+  return json({ saldo_inicial: row ? Number(row.valor) : 0 });
+}
 
 // ---------------------------------------------------------------------
 // gastos fijos automáticos
