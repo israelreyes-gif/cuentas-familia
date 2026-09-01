@@ -9,7 +9,17 @@
 
 const ALLOWED_ORIGIN = 'https://israelreyes-gif.github.io';
 const SESSION_DAYS = 7;
-const DESC_GASTO_FIJO = 'Gasto fijo mensual';
+const DESC_GASTO_FIJO = 'Gasto fijo';
+
+/** recurrencia (texto guardado en D1) → cada cuántos meses se repite */
+const RECURRENCIA_MESES = {
+  mensual: 1,
+  bimestral: 2,
+  trimestral: 3,
+  cuatrimestral: 4,
+  semestral: 6,
+  anual: 12,
+};
 
 function corsHeaders() {
   return {
@@ -117,14 +127,17 @@ async function getConfig(env) {
 
 async function generarGastosFijos(env) {
   const hoy = new Date();
+  const mesActual = hoy.getUTCMonth() + 1; // 1 = enero ... 12 = diciembre
   const primerDiaMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
 
   const { results: fijas } = await env.DB.prepare(
-    'SELECT id, presupuesto FROM categorias WHERE fija = 1 AND presupuesto > 0'
+    'SELECT id, presupuesto, recurrencia, mes_inicio FROM categorias WHERE fija = 1 AND presupuesto > 0'
   ).all();
 
   let creados = 0;
   for (const cat of fijas) {
+    if (!tocaEsteMes(cat, mesActual)) continue;
+
     const yaExiste = await env.DB.prepare(
       'SELECT id FROM movimientos WHERE categoria_id = ? AND fecha = ? AND descripcion = ?'
     ).bind(cat.id, primerDiaMes, DESC_GASTO_FIJO).first();
@@ -138,6 +151,19 @@ async function generarGastosFijos(env) {
   }
 
   return creados;
+}
+
+/**
+ * Decide si a una categoría fija "le toca" generarse en el mes dado,
+ * según su mes de inicio y su recurrencia (mensual, bimestral... anual).
+ * Como todos los intervalos (1,2,3,4,6,12) dividen exactamente a 12,
+ * el ciclo se repite igual todos los años sin arrastrar desfases.
+ */
+function tocaEsteMes(cat, mesActual) {
+  const intervalo = RECURRENCIA_MESES[cat.recurrencia] || 1;
+  const mesInicio = cat.mes_inicio || 1;
+  const diff = ((mesActual - mesInicio) % 12 + 12) % 12;
+  return diff % intervalo === 0;
 }
 
 // ---------------------------------------------------------------------
@@ -413,6 +439,8 @@ async function getCategorias(env) {
       c.color,
       c.presupuesto,
       c.fija,
+      c.recurrencia,
+      c.mes_inicio,
       COALESCE(SUM(CASE
         WHEN m.tipo = 'expense' AND strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
         THEN m.importe ELSE 0
@@ -439,10 +467,16 @@ async function createCategoria(request, env) {
 
   if (!nombre) return error('El nombre es obligatorio');
 
+  const recurrencia = validarRecurrencia(body.recurrencia);
+  if (recurrencia === null) return error('Recurrencia no válida');
+
+  const mesInicio = validarMesInicio(body.mes_inicio);
+  if (mesInicio === null) return error('Mes de inicio no válido (debe ser 1-12)');
+
   try {
     await env.DB.prepare(
-      'INSERT INTO categorias (nombre, color, presupuesto, fija) VALUES (?, ?, ?, ?)'
-    ).bind(nombre, color, presupuesto, fija).run();
+      'INSERT INTO categorias (nombre, color, presupuesto, fija, recurrencia, mes_inicio) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(nombre, color, presupuesto, fija, recurrencia, mesInicio).run();
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
       return error('Ya existe una categoría con ese nombre', 409);
@@ -450,7 +484,20 @@ async function createCategoria(request, env) {
     throw err;
   }
 
-  return json({ nombre, color, presupuesto, fija, gastado: 0, movimientos: 0 }, 201);
+  return json({ nombre, color, presupuesto, fija, recurrencia, mes_inicio: mesInicio, gastado: 0, movimientos: 0 }, 201);
+}
+
+/** Devuelve la recurrencia validada, o 'mensual' si no viene, o null si es inválida */
+function validarRecurrencia(valor) {
+  if (valor === undefined || valor === null || valor === '') return 'mensual';
+  return Object.prototype.hasOwnProperty.call(RECURRENCIA_MESES, valor) ? valor : null;
+}
+
+/** Devuelve el mes de inicio validado (1-12), o 1 si no viene, o null si es inválido */
+function validarMesInicio(valor) {
+  if (valor === undefined || valor === null || valor === '') return 1;
+  const n = Number(valor);
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
 }
 
 async function updateCategoria(nombre, request, env) {
@@ -466,6 +513,18 @@ async function updateCategoria(nombre, request, env) {
     sets.push('fija = ?');
     binds.push(body.fija ? 1 : 0);
   }
+  if (body.recurrencia !== undefined) {
+    const recurrencia = validarRecurrencia(body.recurrencia);
+    if (recurrencia === null) return error('Recurrencia no válida');
+    sets.push('recurrencia = ?');
+    binds.push(recurrencia);
+  }
+  if (body.mes_inicio !== undefined) {
+    const mesInicio = validarMesInicio(body.mes_inicio);
+    if (mesInicio === null) return error('Mes de inicio no válido (debe ser 1-12)');
+    sets.push('mes_inicio = ?');
+    binds.push(mesInicio);
+  }
   if (sets.length === 0) return error('Nada que actualizar');
 
   binds.push(nombre);
@@ -473,8 +532,9 @@ async function updateCategoria(nombre, request, env) {
     .bind(...binds).run();
   if (result.meta.changes === 0) return error('Categoría no encontrada', 404);
 
-  const actualizado = await env.DB.prepare('SELECT nombre, presupuesto, fija FROM categorias WHERE nombre = ?')
-    .bind(nombre).first();
+  const actualizado = await env.DB.prepare(
+    'SELECT nombre, presupuesto, fija, recurrencia, mes_inicio FROM categorias WHERE nombre = ?'
+  ).bind(nombre).first();
   return json(actualizado);
 }
 
