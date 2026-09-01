@@ -2,7 +2,8 @@
  * js/movimientos.js
  * -----------------------------------------------------------------------
  * Pestaña "Movimientos": alta de ingresos/gastos, listado tipo ledger, y
- * cabecera con saldo/ingresos/gastos del mes en curso.
+ * cabecera con el saldo acumulado real (saldo inicial + todos los
+ * movimientos desde siempre) — no un saldo que resetea cada mes.
  * -----------------------------------------------------------------------
  */
 
@@ -21,7 +22,6 @@ const Movimientos = (function () {
     return div.innerHTML;
   }
 
-  /** Fecha de hoy en formato YYYY-MM-DD, en la hora local del dispositivo (no UTC). */
   function getTodayISO() {
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
@@ -30,24 +30,27 @@ const Movimientos = (function () {
 
   function renderHeader() {
     const hoy = new Date();
-    const movimientos = AppData.getMovimientos().filter(m => {
-      const f = new Date(m.fecha);
-      return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
-    });
 
-    const ingresos = movimientos.filter(m => m.tipo === 'income').reduce((sum, m) => sum + m.importe, 0);
-    const gastos = movimientos.filter(m => m.tipo === 'expense').reduce((sum, m) => sum + m.importe, 0);
-    const saldo = ingresos - gastos;
+    // Saldo acumulado real (saldo inicial + todo el historial) — no resetea cada mes.
+    const saldoActual = AppData.getSaldoActual();
 
     const balanceEl = document.getElementById('balanceAmount');
     if (balanceEl) {
-      balanceEl.textContent = (saldo >= 0 ? '+' : '') + formatMoney(saldo);
-      balanceEl.classList.toggle('positive', saldo >= 0);
+      balanceEl.textContent = (saldoActual >= 0 ? '+' : '') + formatMoney(saldoActual);
+      balanceEl.classList.toggle('positive', saldoActual >= 0);
     }
+
+    // Ingresos/gastos DEL MES EN CURSO, solo informativo — el saldo de arriba no depende de esto.
+    const movimientosDelMes = AppData.getMovimientos().filter(m => {
+      const f = new Date(m.fecha);
+      return f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth();
+    });
+    const ingresosMes = movimientosDelMes.filter(m => m.tipo === 'income').reduce((sum, m) => sum + m.importe, 0);
+    const gastosMes = movimientosDelMes.filter(m => m.tipo === 'expense').reduce((sum, m) => sum + m.importe, 0);
 
     const subEl = document.querySelector('.balance-sub');
     if (subEl) {
-      subEl.textContent = `Ingresos ${formatMoney(ingresos)} · Gastos ${formatMoney(gastos)}`;
+      subEl.textContent = `Ingresos ${formatMoney(ingresosMes)} · Gastos ${formatMoney(gastosMes)}`;
     }
 
     const eyebrowEl = document.querySelector('.cover-eyebrow');
@@ -65,7 +68,6 @@ const Movimientos = (function () {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  /** Rellena el campo Fecha con el día de hoy. Se llama cada vez que se entra en la pestaña. */
   function resetDateField() {
     const dateInput = document.getElementById('dateInput');
     if (dateInput) dateInput.value = getTodayISO();
