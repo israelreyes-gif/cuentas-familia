@@ -24,6 +24,24 @@ const Categorias = (function () {
     return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
+  const RECURRENCIA_LABEL = {
+    mensual: 'Mensual',
+    bimestral: 'Bimestral',
+    trimestral: 'Trimestral',
+    cuatrimestral: 'Cuatrimestral',
+    semestral: 'Semestral',
+    anual: 'Anual',
+  };
+  const MESES_ABREV = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  function fijaTagLabel(c) {
+    if (c.recurrencia && c.recurrencia !== 'mensual') {
+      const mes = MESES_ABREV[(c.mes_inicio || 1) - 1];
+      return `Fija · ${RECURRENCIA_LABEL[c.recurrencia]} (${mes})`;
+    }
+    return 'Fija';
+  }
+
   function renderSpendList() {
     const list = document.getElementById('catSpendList');
     if (!list) return;
@@ -38,7 +56,7 @@ const Categorias = (function () {
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-swatch" style="background:${c.color}"></span>${escapeHtml(c.nombre)}${c.fija ? ' <span class="fija-tag">Fija</span>' : ''}</div>
+              <div class="cat-name"><span class="cat-swatch" style="background:${c.color}"></span>${escapeHtml(c.nombre)}${c.fija ? ` <span class="fija-tag">${fijaTagLabel(c)}</span>` : ''}</div>
               <div class="cat-nums">${formatMoney(c.gastado)} ${sinPresupuesto ? '· sin presupuesto' : '/ ' + c.presupuesto + ' €'}</div>
             </div>
             <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
