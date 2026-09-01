@@ -44,10 +44,10 @@
 
 .manage-list{border-top:1px solid var(--rule);}
 .manage-row{
-  display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px dashed var(--rule);
+  display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px dashed var(--rule);
 }
 .manage-row .cat-swatch{width:12px;height:12px;margin-top:3px;}
-.manage-row .name{flex:1;font-size:13.5px;font-weight:600;}
+.manage-row .name{flex:1;min-width:120px;font-size:13.5px;font-weight:600;}
 .manage-row .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);}
 .fija-check{
   display:inline-flex;align-items:center;gap:4px;margin-left:10px;
