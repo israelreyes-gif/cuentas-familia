@@ -207,6 +207,7 @@ const Categorias = (function () {
         toggleNewCatRecurBlock(false);
         renderManageList();
         Movimientos.renderCategorySelect();
+        Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
         input.style.borderColor = 'var(--expense)';
@@ -225,6 +226,7 @@ const Categorias = (function () {
         renderManageList();
         renderSpendList();
         Movimientos.renderCategorySelect();
+        Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
         if (err.data && err.data.error === 'tiene_movimientos') {
@@ -276,6 +278,7 @@ const Categorias = (function () {
         renderManageList();
         renderSpendList();
         Movimientos.renderCategorySelect();
+        Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
         UIHelpers.setButtonLoading(btn, false);
@@ -288,6 +291,7 @@ const Categorias = (function () {
     AppData.updateCategoriaPresupuesto(nombre, parseFloat(valor))
       .then(() => {
         renderSpendList();
+        Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
         alert(err.message || 'No se pudo actualizar el presupuesto.');
@@ -299,6 +303,7 @@ const Categorias = (function () {
     AppData.updateCategoriaFija(nombre, checked)
       .then(() => {
         Movimientos.renderCategorySelect();
+        Movimientos.renderUpcomingFixed();
         renderManageList();
       })
       .catch((err) => {
@@ -316,6 +321,9 @@ const Categorias = (function () {
 
     selects.forEach(s => s.disabled = true);
     AppData.updateCategoriaRecurrencia(nombre, recurrencia, mesInicio)
+      .then(() => {
+        Movimientos.renderUpcomingFixed();
+      })
       .catch((err) => {
         alert(err.message || 'No se pudo actualizar la recurrencia.');
       })
