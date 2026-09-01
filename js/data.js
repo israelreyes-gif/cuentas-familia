@@ -139,10 +139,14 @@ const AppData = (function () {
     return categorias.some(c => c.nombre.toLowerCase() === nombre.toLowerCase());
   }
 
-  async function addCategoria({ nombre, color, presupuesto, fija }) {
+  async function addCategoria({ nombre, color, presupuesto, fija, recurrencia, mesInicio }) {
     const nueva = await apiFetch('/api/categorias', {
       method: 'POST',
-      body: JSON.stringify({ nombre, color, presupuesto: presupuesto || 0, fija: !!fija }),
+      body: JSON.stringify({
+        nombre, color, presupuesto: presupuesto || 0, fija: !!fija,
+        recurrencia: recurrencia || undefined,
+        mes_inicio: mesInicio || undefined,
+      }),
     });
     categorias.push(nueva);
     return nueva;
@@ -190,6 +194,19 @@ const AppData = (function () {
     });
     const cat = categorias.find(c => c.nombre === nombre);
     if (cat) cat.fija = actualizado.fija;
+    return cat;
+  }
+
+  async function updateCategoriaRecurrencia(nombre, recurrencia, mesInicio) {
+    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+      method: 'PATCH',
+      body: JSON.stringify({ recurrencia, mes_inicio: mesInicio }),
+    });
+    const cat = categorias.find(c => c.nombre === nombre);
+    if (cat) {
+      cat.recurrencia = actualizado.recurrencia;
+      cat.mes_inicio = actualizado.mes_inicio;
+    }
     return cat;
   }
 
@@ -264,6 +281,7 @@ const AppData = (function () {
     deleteCategoria,
     updateCategoriaPresupuesto,
     updateCategoriaFija,
+    updateCategoriaRecurrencia,
     getColorPalette,
     getAvailableYears,
     getYearData,
