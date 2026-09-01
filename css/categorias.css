@@ -9,7 +9,12 @@
 .cat-row{margin-bottom:14px;}
 .cat-top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px;}
 .cat-name{font-weight:600;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;}
-.cat-swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.cat-icon{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  background:var(--paper-dim);border:1px solid var(--rule);
+  display:flex;align-items:center;justify-content:center;
+}
+.cat-icon svg{width:13px;height:13px;}
 .cat-nums{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-soft);}
 .cat-bar-bg{height:7px;background:var(--paper-dim);border-radius:5px;overflow:hidden;border:1px solid var(--rule);}
 .cat-bar-fill{height:100%;border-radius:5px;}
@@ -47,7 +52,8 @@
 .manage-row{
   display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px dashed var(--rule);
 }
-.manage-row .cat-swatch{width:12px;height:12px;margin-top:3px;}
+.manage-row .cat-icon{width:28px;height:28px;margin-top:0;}
+.manage-row .cat-icon svg{width:16px;height:16px;}
 .manage-row .name{flex:1;min-width:120px;font-size:13.5px;font-weight:600;}
 .manage-row .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);}
 .fija-check{
@@ -95,7 +101,7 @@
   padding:8px 30px 8px 10px; font-size:13.5px; border-radius:8px; background-size:14px;
   background-position:right 10px center;
 }
-.manage-row .recur-block{ margin-left:22px; width:calc(100% - 22px); }
+.manage-row .recur-block{ margin-left:38px; width:calc(100% - 38px); }
 
 /* ---- reasignación al borrar categorías con movimientos ---- */
 .reassign-row{
