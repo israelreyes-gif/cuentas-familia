@@ -74,6 +74,28 @@
 }
 .delete-btn:disabled{opacity:.6;cursor:default;}
 
+/* ---- recurrencia (categorías fijas anuales / bimestrales / etc.) ---- */
+.recur-block{
+  width:100%;
+  margin:8px 0 4px;
+  padding:10px 12px;
+  background:var(--paper-dim);
+  border:1px dashed var(--rule);
+  border-radius:10px;
+}
+.recur-block.hidden{ display:none; }
+.recur-title{
+  font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600;
+  color:var(--gold); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+}
+.recur-fields{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.recur-fields .mini-field label{ margin:0 0 4px; font-size:10px; }
+.recur-fields select{
+  padding:8px 30px 8px 10px; font-size:13.5px; border-radius:8px; background-size:14px;
+  background-position:right 10px center;
+}
+.manage-row .recur-block{ margin-left:22px; width:calc(100% - 22px); }
+
 /* ---- reasignación al borrar categorías con movimientos ---- */
 .reassign-row{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
