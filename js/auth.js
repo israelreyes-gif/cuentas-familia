@@ -1,13 +1,14 @@
 /**
  * js/auth.js
  * -----------------------------------------------------------------------
- * Gestiona el login antes de poder usar la app.
+ * Gestiona el login antes de poder usar la app. Habla con la API a
+ * través del proxy compartido en Deno.
  * -----------------------------------------------------------------------
  */
 
 const Auth = (function () {
 
-  const API_BASE = 'https://cuentas-familia-api.israel-reyes.workers.dev';
+  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
   const TOKEN_KEY = 'cuentas_casa_token';
 
   let onSuccessCallback = null;
