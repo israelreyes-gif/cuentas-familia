@@ -105,6 +105,35 @@ const Movimientos = (function () {
     `).join('');
   }
 
+  function renderUpcomingFixed() {
+    const el = document.getElementById('upcomingFixed');
+    if (!el) return;
+
+    const meses = AppData.getProximosGastosFijos();
+
+    el.innerHTML = `
+      <div class="upcoming-fixed-heading">Próximos gastos fijos</div>
+      <div class="upcoming-months">
+        ${meses.map(m => `
+          <div class="upcoming-month-card">
+            <div class="upcoming-month-name">${m.mes} ${m.anio}</div>
+            <div class="upcoming-month-total">${formatMoney(m.total)}</div>
+            ${m.categorias.length === 0
+              ? '<div class="upcoming-empty">Sin gastos fijos</div>'
+              : m.categorias.map(c => `
+                  <div class="upcoming-cat-row">
+                    <span class="cat-icon" style="color:${c.color}">${CategoryIcons.render(c.nombre)}</span>
+                    <span class="upcoming-cat-name">${escapeHtml(c.nombre)}</span>
+                    <span class="upcoming-cat-amt">${c.presupuesto} €</span>
+                  </div>
+                `).join('')
+            }
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   function setType(type) {
     document.getElementById('btnExpense').classList.toggle('selected', type === 'expense');
     document.getElementById('btnIncome').classList.toggle('selected', type === 'income');
@@ -188,6 +217,7 @@ const Movimientos = (function () {
     renderCategorySelect();
     resetDateField();
     renderHeader();
+    renderUpcomingFixed();
     UIHelpers.withOverlay(document.getElementById('ledgerList'), 300, () => {
       renderLedgerList();
     });
@@ -198,6 +228,7 @@ const Movimientos = (function () {
     renderLedgerList,
     renderCategorySelect,
     renderHeader,
+    renderUpcomingFixed,
     resetDateField,
     setType,
     saveMovement,
