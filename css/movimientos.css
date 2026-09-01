@@ -37,3 +37,20 @@
   padding:4px 2px 4px 8px;line-height:1;flex-shrink:0;
 }
 .ledger-delete:active{color:var(--expense);}
+
+/* ---- próximos gastos fijos (2 meses vista) ---- */
+.upcoming-fixed{margin:22px 0 4px;}
+.upcoming-fixed-heading{font-family:'Fraunces',serif;font-size:14.5px;font-weight:600;margin:0 0 8px;}
+.upcoming-months{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.upcoming-month-card{background:var(--paper-dim);border-radius:var(--radius);padding:12px;}
+.upcoming-month-name{
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--ink-soft);
+  text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;
+}
+.upcoming-month-total{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:var(--expense);margin-bottom:8px;}
+.upcoming-cat-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;}
+.upcoming-cat-row .cat-icon{width:16px;height:16px;}
+.upcoming-cat-row .cat-icon svg{width:10px;height:10px;}
+.upcoming-cat-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.upcoming-cat-amt{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);white-space:nowrap;}
+.upcoming-empty{font-size:11.5px;color:var(--ink-soft);}
