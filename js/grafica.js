@@ -180,7 +180,7 @@ const Grafica = (function () {
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-swatch" style="background:${it.color}"></span>${escapeHtml(it.nombre)}</div>
+              <div class="cat-name"><span class="cat-icon" style="color:${it.color}">${CategoryIcons.render(it.nombre)}</span>${escapeHtml(it.nombre)}</div>
               <div class="cat-nums">${formatMoney(it.gastado)} · ${pct}%</div>
             </div>
             <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${it.color}"></div></div>
