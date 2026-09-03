@@ -99,7 +99,10 @@ const Movimientos = (function () {
       const color = (cat && cat.color) || '#5A5F73';
       return `
         <div class="ledger-row">
-          <span class="cat-icon" style="color:${color}">${CategoryIcons.render(m.cat)}</span>
+          <span class="ledger-icon-wrap">
+            <span class="cat-icon" style="color:${color}">${CategoryIcons.render(m.cat)}</span>
+            <span class="ledger-type-dot ${m.tipo}"></span>
+          </span>
           <div class="ledger-main">
             <div class="ledger-desc">${escapeHtml(m.desc)}</div>
             <div class="ledger-cat">${escapeHtml(m.cat)}</div>
