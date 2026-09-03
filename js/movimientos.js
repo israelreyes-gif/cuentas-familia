@@ -92,17 +92,23 @@ const Movimientos = (function () {
       return;
     }
 
-    list.innerHTML = movimientos.map(m => `
-      <div class="ledger-row">
-        <span class="ledger-dot ${m.tipo}"></span>
-        <div class="ledger-main">
-          <div class="ledger-desc">${escapeHtml(m.desc)}</div>
-          <div class="ledger-cat">${escapeHtml(m.cat)}</div>
+    const categorias = AppData.getCategorias();
+
+    list.innerHTML = movimientos.map(m => {
+      const cat = categorias.find(c => c.nombre === m.cat);
+      const color = (cat && cat.color) || '#5A5F73';
+      return `
+        <div class="ledger-row">
+          <span class="cat-icon" style="color:${color}">${CategoryIcons.render(m.cat)}</span>
+          <div class="ledger-main">
+            <div class="ledger-desc">${escapeHtml(m.desc)}</div>
+            <div class="ledger-cat">${escapeHtml(m.cat)}</div>
+          </div>
+          <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${formatMoney(m.importe)}</div>
+          <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
         </div>
-        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${formatMoney(m.importe)}</div>
-        <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   function renderUpcomingFixed() {
