@@ -49,8 +49,14 @@ const CategoryIcons = (function () {
     { icon: 'car', match: ['coche', 'gasolina', 'combustible', 'parking', 'transporte', 'uber', 'taxi', 'metro', 'bus'] },
     { icon: 'tooth', match: ['dentista', 'dental'] },
     { icon: 'health', match: ['salud', 'medico', 'farmacia', 'clinica', 'seguro medico'] },
-    { icon: 'school', match: ['colegio', 'escuela', 'guarderia'] },
-    { icon: 'book', match: ['oposicion', 'oposiciones', 'curso', 'formacion', 'academia', 'educacion', 'ingles', 'frances', 'aleman', 'italiano', 'chino', 'idioma', 'idiomas', 'clases particulares'] },
+    {
+      icon: 'school',
+      match: [
+        'colegio', 'escuela', 'guarderia', 'oposicion', 'oposiciones', 'curso', 'formacion',
+        'academia', 'educacion', 'ingles', 'frances', 'aleman', 'italiano', 'chino',
+        'idioma', 'idiomas', 'clases particulares',
+      ],
+    },
     { icon: 'shirt', match: ['ropa', 'moda', 'zapatos', 'calzado'] },
     { icon: 'paw', match: ['mascota', 'perro', 'gato', 'veterinario'] },
     { icon: 'film', match: ['ocio', 'cine', 'netflix', 'spotify', 'suscripcion', 'streaming', 'hbo', 'disney'] },
