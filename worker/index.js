@@ -2,8 +2,8 @@
  * Cloudflare Worker — API de "Cuentas de casa"
  * -----------------------------------------------------------------------
  * Incluye login, categorías, movimientos, gastos fijos automáticos,
- * notificaciones push, y ahora el saldo inicial (config) para calcular
- * el saldo acumulado real de la cuenta, no solo el del mes en curso.
+ * y el saldo inicial (config) para calcular el saldo acumulado real
+ * de la cuenta, no solo el del mes en curso.
  * -----------------------------------------------------------------------
  */
 
@@ -90,13 +90,6 @@ export default {
         return await deleteMovimiento(Number(movMatch[1]), env);
       }
 
-      if (path === '/api/push/subscribe' && method === 'POST') {
-        return await pushSubscribe(request, env);
-      }
-      if (path === '/api/push/unsubscribe' && method === 'POST') {
-        return await pushUnsubscribe(request, env);
-      }
-
       return error('Ruta no encontrada', 404);
     } catch (err) {
       return error('Error interno: ' + err.message, 500);
@@ -106,8 +99,6 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === '0 3 1 * *') {
       ctx.waitUntil(generarGastosFijos(env));
-    } else if (event.cron === '0 6 1 * *') {
-      ctx.waitUntil(enviarAvisoNomina(env));
     }
   },
 };
@@ -164,177 +155,6 @@ function tocaEsteMes(cat, mesActual) {
   const mesInicio = cat.mes_inicio || 1;
   const diff = ((mesActual - mesInicio) % 12 + 12) % 12;
   return diff % intervalo === 0;
-}
-
-// ---------------------------------------------------------------------
-// notificaciones push
-// ---------------------------------------------------------------------
-
-async function pushSubscribe(request, env) {
-  const body = await request.json();
-  const sub = body && body.subscription;
-  if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
-    return error('Suscripción push inválida');
-  }
-
-  await env.DB.prepare(`
-    INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)
-    ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth
-  `).bind(sub.endpoint, sub.keys.p256dh, sub.keys.auth).run();
-
-  return json({ ok: true });
-}
-
-async function pushUnsubscribe(request, env) {
-  const body = await request.json();
-  const endpoint = body && body.endpoint;
-  if (!endpoint) return error('Falta el endpoint de la suscripción');
-
-  await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).run();
-  return json({ ok: true });
-}
-
-async function enviarAvisoNomina(env) {
-  const { results: subs } = await env.DB.prepare('SELECT id, endpoint, p256dh, auth FROM push_subscriptions').all();
-
-  const payload = JSON.stringify({
-    title: 'Cuentas de casa',
-    body: 'Ya es día 1 — no olvides registrar la nómina de este mes.',
-  });
-
-  let enviados = 0;
-  for (const sub of subs) {
-    try {
-      await sendWebPush(sub, payload, env);
-      enviados++;
-    } catch (err) {
-      if (err.status === 404 || err.status === 410) {
-        await env.DB.prepare('DELETE FROM push_subscriptions WHERE id = ?').bind(sub.id).run();
-      }
-    }
-  }
-  return enviados;
-}
-
-function b64urlEncode(bytes) {
-  let str = '';
-  for (const b of bytes) str += String.fromCharCode(b);
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function b64urlDecode(str) {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) str += '=';
-  const bin = atob(str);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-function concatBytes(...arrays) {
-  const total = arrays.reduce((sum, a) => sum + a.length, 0);
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const a of arrays) { out.set(a, offset); offset += a.length; }
-  return out;
-}
-
-async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
-  const pub = b64urlDecode(publicKeyB64url);
-  const x = pub.slice(1, 33);
-  const y = pub.slice(33, 65);
-  const jwk = {
-    kty: 'EC', crv: 'P-256',
-    x: b64urlEncode(x), y: b64urlEncode(y), d: privateKeyB64url,
-    ext: true,
-  };
-  return crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
-}
-
-async function createVapidJwt(privateKey, audience, subject) {
-  const header = { typ: 'JWT', alg: 'ES256' };
-  const claims = { aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject };
-  const enc = new TextEncoder();
-  const signingInput =
-    b64urlEncode(enc.encode(JSON.stringify(header))) + '.' + b64urlEncode(enc.encode(JSON.stringify(claims)));
-
-  const signature = await crypto.subtle.sign(
-    { name: 'ECDSA', hash: 'SHA-256' }, privateKey, enc.encode(signingInput)
-  );
-  return signingInput + '.' + b64urlEncode(new Uint8Array(signature));
-}
-
-async function encryptPayload(payloadText, p256dhB64url, authB64url) {
-  const enc = new TextEncoder();
-  const uaPublic = b64urlDecode(p256dhB64url);
-  const authSecret = b64urlDecode(authB64url);
-
-  const serverKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  const asPublicRaw = new Uint8Array(await crypto.subtle.exportKey('raw', serverKeyPair.publicKey));
-
-  const subscriberPublicKey = await crypto.subtle.importKey(
-    'raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []
-  );
-  const ecdhSecret = new Uint8Array(
-    await crypto.subtle.deriveBits({ name: 'ECDH', public: subscriberPublicKey }, serverKeyPair.privateKey, 256)
-  );
-
-  async function hmacSha256(keyBytes, dataBytes) {
-    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    return new Uint8Array(await crypto.subtle.sign('HMAC', key, dataBytes));
-  }
-
-  const prkKey = await hmacSha256(authSecret, ecdhSecret);
-  const keyInfo = concatBytes(enc.encode('WebPush: info\0'), uaPublic, asPublicRaw);
-  const ikm = (await hmacSha256(prkKey, concatBytes(keyInfo, new Uint8Array([1])))).slice(0, 32);
-
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const prk = await hmacSha256(salt, ikm);
-
-  const cekInfo = enc.encode('Content-Encoding: aes128gcm\0');
-  const cek = (await hmacSha256(prk, concatBytes(cekInfo, new Uint8Array([1])))).slice(0, 16);
-
-  const nonceInfo = enc.encode('Content-Encoding: nonce\0');
-  const nonce = (await hmacSha256(prk, concatBytes(nonceInfo, new Uint8Array([1])))).slice(0, 12);
-
-  const plaintext = concatBytes(enc.encode(payloadText), new Uint8Array([2]));
-
-  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
-  const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plaintext)
-  );
-
-  const recordSize = new Uint8Array(4);
-  new DataView(recordSize.buffer).setUint32(0, 4096, false);
-
-  const header = concatBytes(salt, recordSize, new Uint8Array([asPublicRaw.length]), asPublicRaw);
-  return concatBytes(header, ciphertext);
-}
-
-async function sendWebPush(sub, payloadText, env) {
-  const endpointUrl = new URL(sub.endpoint);
-  const audience = endpointUrl.origin;
-
-  const privateKey = await importVapidPrivateKey(env.VAPID_PRIVATE_KEY, env.VAPID_PUBLIC_KEY);
-  const jwt = await createVapidJwt(privateKey, audience, env.VAPID_SUBJECT);
-  const body = await encryptPayload(payloadText, sub.p256dh, sub.auth);
-
-  const res = await fetch(sub.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Encoding': 'aes128gcm',
-      'TTL': '86400',
-      'Authorization': `vapid t=${jwt}, k=${env.VAPID_PUBLIC_KEY}`,
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    const err = new Error('Push service respondió ' + res.status);
-    err.status = res.status;
-    throw err;
-  }
 }
 
 // ---------------------------------------------------------------------
