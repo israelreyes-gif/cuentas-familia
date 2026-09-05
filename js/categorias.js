@@ -52,7 +52,7 @@ const Categorias = (function () {
     } else {
       list.innerHTML = cats.map(c => {
         const sinPresupuesto = !c.presupuesto || c.presupuesto <= 0;
-        const pct = sinPresupuesto ? 0 : Math.min(100, Math.round(c.gastado / c.presupuesto * 100));
+        const pct = sinPresupuesto ? 0 : Math.max(0, Math.min(100, Math.round(c.gastado / c.presupuesto * 100)));
         return `
           <div class="cat-row">
             <div class="cat-top">
