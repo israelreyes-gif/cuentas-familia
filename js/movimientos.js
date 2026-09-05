@@ -92,26 +92,17 @@ const Movimientos = (function () {
       return;
     }
 
-    const categorias = AppData.getCategorias();
-
-    list.innerHTML = movimientos.map(m => {
-      const cat = categorias.find(c => c.nombre === m.cat);
-      const color = (cat && cat.color) || '#5A5F73';
-      return `
-        <div class="ledger-row">
-          <span class="ledger-icon-wrap">
-            <span class="cat-icon" style="color:${color}">${CategoryIcons.render(m.cat)}</span>
-            <span class="ledger-type-dot ${m.tipo}"></span>
-          </span>
-          <div class="ledger-main">
-            <div class="ledger-desc">${escapeHtml(m.desc)}</div>
-            <div class="ledger-cat">${escapeHtml(m.cat)}</div>
-          </div>
-          <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${formatMoney(m.importe)}</div>
-          <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
+    list.innerHTML = movimientos.map(m => `
+      <div class="ledger-row">
+        <span class="cat-icon">${CategoryIcons.render(m.cat)}</span>
+        <div class="ledger-main">
+          <div class="ledger-desc">${escapeHtml(m.desc)}</div>
+          <div class="ledger-cat">${escapeHtml(m.cat)}</div>
         </div>
-      `;
-    }).join('');
+        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${formatMoney(m.importe)}</div>
+        <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
+      </div>
+    `).join('');
   }
 
   function renderUpcomingFixed() {
@@ -131,7 +122,7 @@ const Movimientos = (function () {
               ? '<div class="upcoming-empty">Sin gastos fijos</div>'
               : m.categorias.map(c => `
                   <div class="upcoming-cat-row">
-                    <span class="cat-icon" style="color:${c.color}">${CategoryIcons.render(c.nombre)}</span>
+                    <span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>
                     <span class="upcoming-cat-name">${escapeHtml(c.nombre)}</span>
                     <span class="upcoming-cat-amt">${c.presupuesto} €</span>
                   </div>
