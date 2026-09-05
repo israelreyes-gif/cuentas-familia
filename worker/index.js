@@ -71,12 +71,12 @@ export default {
       if (path === '/api/categorias' && method === 'POST') {
         return await createCategoria(request, env);
       }
-      const catMatch = path.match(/^\/api\/categorias\/([^/]+)$/);
+      const catMatch = path.match(/^\/api\/categorias\/(\d+)$/);
       if (catMatch && method === 'PATCH') {
-        return await updateCategoria(decodeURIComponent(catMatch[1]), request, env);
+        return await updateCategoria(Number(catMatch[1]), request, env);
       }
       if (catMatch && method === 'DELETE') {
-        return await deleteCategoria(decodeURIComponent(catMatch[1]), request, env);
+        return await deleteCategoria(Number(catMatch[1]), request, env);
       }
 
       if (path === '/api/movimientos' && method === 'GET') {
@@ -309,6 +309,7 @@ async function requireAuth(request, env) {
 async function getCategorias(env) {
   const { results } = await env.DB.prepare(`
     SELECT
+      c.id,
       c.nombre,
       c.presupuesto,
       c.fija,
@@ -347,17 +348,20 @@ async function createCategoria(request, env) {
   if (mesInicio === null) return error('Mes de inicio no válido (debe ser 1-12)');
 
   try {
-    await env.DB.prepare(
+    const result = await env.DB.prepare(
       'INSERT INTO categorias (nombre, presupuesto, fija, recurrencia, mes_inicio) VALUES (?, ?, ?, ?, ?)'
     ).bind(nombre, presupuesto, fija, recurrencia, mesInicio).run();
+
+    return json({
+      id: result.meta.last_row_id,
+      nombre, presupuesto, fija, recurrencia, mes_inicio: mesInicio, gastado: 0, movimientos: 0,
+    }, 201);
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
       return error('Ya existe una categoría con ese nombre', 409);
     }
     throw err;
   }
-
-  return json({ nombre, presupuesto, fija, recurrencia, mes_inicio: mesInicio, gastado: 0, movimientos: 0 }, 201);
 }
 
 /** Devuelve la recurrencia validada, o 'mensual' si no viene, o null si es inválida */
@@ -373,7 +377,7 @@ function validarMesInicio(valor) {
   return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
 }
 
-async function updateCategoria(nombre, request, env) {
+async function updateCategoria(id, request, env) {
   const body = await request.json();
   const sets = [];
   const binds = [];
@@ -400,20 +404,20 @@ async function updateCategoria(nombre, request, env) {
   }
   if (sets.length === 0) return error('Nada que actualizar');
 
-  binds.push(nombre);
-  const result = await env.DB.prepare(`UPDATE categorias SET ${sets.join(', ')} WHERE nombre = ?`)
+  binds.push(id);
+  const result = await env.DB.prepare(`UPDATE categorias SET ${sets.join(', ')} WHERE id = ?`)
     .bind(...binds).run();
   if (result.meta.changes === 0) return error('Categoría no encontrada', 404);
 
   const actualizado = await env.DB.prepare(
-    'SELECT nombre, presupuesto, fija, recurrencia, mes_inicio FROM categorias WHERE nombre = ?'
-  ).bind(nombre).first();
+    'SELECT id, nombre, presupuesto, fija, recurrencia, mes_inicio FROM categorias WHERE id = ?'
+  ).bind(id).first();
   return json(actualizado);
 }
 
-async function deleteCategoria(nombre, request, env) {
-  const cat = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
-    .bind(nombre).first();
+async function deleteCategoria(id, request, env) {
+  const cat = await env.DB.prepare('SELECT id, nombre FROM categorias WHERE id = ?')
+    .bind(id).first();
   if (!cat) return error('Categoría no encontrada', 404);
 
   const { count } = await env.DB.prepare(
@@ -424,7 +428,7 @@ async function deleteCategoria(nombre, request, env) {
     let reassignTo = null;
     try {
       const body = await request.json();
-      reassignTo = body && body.reassignTo ? String(body.reassignTo).trim() : null;
+      reassignTo = body && body.reassignTo ? Number(body.reassignTo) : null;
     } catch (_) {}
 
     if (!reassignTo) {
@@ -435,11 +439,11 @@ async function deleteCategoria(nombre, request, env) {
       }, 409);
     }
 
-    if (reassignTo === nombre) {
+    if (reassignTo === cat.id) {
       return error('La categoría de destino tiene que ser distinta de la que borras', 400);
     }
 
-    const destino = await env.DB.prepare('SELECT id FROM categorias WHERE nombre = ?')
+    const destino = await env.DB.prepare('SELECT id FROM categorias WHERE id = ?')
       .bind(reassignTo).first();
     if (!destino) return error('La categoría de destino no existe', 404);
 
