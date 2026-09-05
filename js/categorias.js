@@ -18,10 +18,6 @@ const Categorias = (function () {
     return div.innerHTML;
   }
 
-  function escapeJsString(str) {
-    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  }
-
   const RECURRENCIA_LABEL = {
     mensual: 'Mensual',
     bimestral: 'Bimestral',
@@ -114,28 +110,28 @@ const Categorias = (function () {
           <span class="count">${c.movimientos} mov.</span>
           <label class="fija-check">
             <input type="checkbox" ${c.fija ? 'checked' : ''}
-              onchange="Categorias.toggleFija('${escapeJsString(c.nombre)}', this.checked, this)"> Fija
+              onchange="Categorias.toggleFija(${c.id}, this.checked, this)"> Fija
           </label>
         </span>
         <span class="budget-field">
           <input type="number" value="${c.presupuesto || ''}" placeholder="0"
-            onchange="Categorias.updateBudget('${escapeJsString(c.nombre)}', this.value, this)">
+            onchange="Categorias.updateBudget(${c.id}, this.value, this)">
           <span class="spinner field-spinner"></span>
         </span>
-        <button class="delete-btn" onclick="Categorias.deleteCategory('${escapeJsString(c.nombre)}', this)">✕</button>
+        <button class="delete-btn" onclick="Categorias.deleteCategory(${c.id}, this)">✕</button>
         ${c.fija ? `
           <div class="recur-block">
             <div class="recur-title">Recurrencia</div>
             <div class="recur-fields">
               <div class="mini-field">
                 <label>Primer pago</label>
-                <select onchange="Categorias.updateRecurrencia('${escapeJsString(c.nombre)}', this)">
+                <select onchange="Categorias.updateRecurrencia(${c.id}, this)">
                   ${buildMesInicioOptions(c.mes_inicio || 1)}
                 </select>
               </div>
               <div class="mini-field">
                 <label>Cada</label>
-                <select onchange="Categorias.updateRecurrencia('${escapeJsString(c.nombre)}', this)">
+                <select onchange="Categorias.updateRecurrencia(${c.id}, this)">
                   ${buildRecurrenciaOptions(c.recurrencia || 'mensual')}
                 </select>
               </div>
@@ -202,10 +198,10 @@ const Categorias = (function () {
       });
   }
 
-  function deleteCategory(nombre, btn) {
+  function deleteCategory(id, btn) {
     if (btn) UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.deleteCategoria(nombre)
+    AppData.deleteCategoria(id)
       .then(() => {
         renderManageList();
         renderSpendList();
@@ -214,7 +210,7 @@ const Categorias = (function () {
       })
       .catch((err) => {
         if (err.data && err.data.error === 'tiene_movimientos') {
-          showReassignPrompt(nombre, err.data.count, btn);
+          showReassignPrompt(id, err.data.count, btn);
         } else {
           if (btn) UIHelpers.setButtonLoading(btn, false);
           alert(err.message || 'No se pudo borrar la categoría.');
@@ -222,12 +218,12 @@ const Categorias = (function () {
       });
   }
 
-  function showReassignPrompt(nombre, count, btn) {
+  function showReassignPrompt(id, count, btn) {
     if (btn) UIHelpers.setButtonLoading(btn, false);
     const row = btn ? btn.closest('.manage-row') : null;
     if (!row) return;
 
-    const otras = AppData.getCategoriasOrdenadas().filter(c => c.nombre !== nombre);
+    const otras = AppData.getCategoriasOrdenadas().filter(c => c.id !== id);
     if (otras.length === 0) {
       alert('No hay otra categoría a la que mover estos movimientos. Crea una nueva antes de borrar esta.');
       return;
@@ -237,9 +233,9 @@ const Categorias = (function () {
       <div class="reassign-row">
         <span class="reassign-note">${count} movimiento(s). Mover a:</span>
         <select class="reassign-select">
-          ${otras.map(c => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`).join('')}
+          ${otras.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('')}
         </select>
-        <button class="reassign-confirm" onclick="Categorias.confirmReassignDelete('${escapeJsString(nombre)}', this)">Mover y borrar</button>
+        <button class="reassign-confirm" onclick="Categorias.confirmReassignDelete(${id}, this)">Mover y borrar</button>
         <button class="reassign-cancel" onclick="Categorias.cancelReassign(this)">Cancelar</button>
       </div>
     `);
@@ -250,14 +246,14 @@ const Categorias = (function () {
     if (row) row.remove();
   }
 
-  function confirmReassignDelete(nombre, btn) {
+  function confirmReassignDelete(id, btn) {
     const row = btn.closest('.reassign-row');
     const select = row.querySelector('.reassign-select');
-    const destino = select.value;
+    const destino = Number(select.value);
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.deleteCategoria(nombre, destino)
+    AppData.deleteCategoria(id, destino)
       .then(() => {
         renderManageList();
         renderSpendList();
@@ -270,9 +266,9 @@ const Categorias = (function () {
       });
   }
 
-  function updateBudget(nombre, valor, inputEl) {
+  function updateBudget(id, valor, inputEl) {
     UIHelpers.withFieldLoading(inputEl, 300, () => {});
-    AppData.updateCategoriaPresupuesto(nombre, parseFloat(valor))
+    AppData.updateCategoriaPresupuesto(id, parseFloat(valor))
       .then(() => {
         renderSpendList();
         Movimientos.renderUpcomingFixed();
@@ -282,9 +278,9 @@ const Categorias = (function () {
       });
   }
 
-  function toggleFija(nombre, checked, checkboxEl) {
+  function toggleFija(id, checked, checkboxEl) {
     checkboxEl.disabled = true;
-    AppData.updateCategoriaFija(nombre, checked)
+    AppData.updateCategoriaFija(id, checked)
       .then(() => {
         Movimientos.renderCategorySelect();
         Movimientos.renderUpcomingFixed();
@@ -297,14 +293,14 @@ const Categorias = (function () {
       });
   }
 
-  function updateRecurrencia(nombre, selectEl) {
+  function updateRecurrencia(id, selectEl) {
     const bloque = selectEl.closest('.recur-block');
     const selects = bloque.querySelectorAll('select');
     const mesInicio = Number(selects[0].value);
     const recurrencia = selects[1].value;
 
     selects.forEach(s => s.disabled = true);
-    AppData.updateCategoriaRecurrencia(nombre, recurrencia, mesInicio)
+    AppData.updateCategoriaRecurrencia(id, recurrencia, mesInicio)
       .then(() => {
         Movimientos.renderUpcomingFixed();
       })
