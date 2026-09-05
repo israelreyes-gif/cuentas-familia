@@ -92,8 +92,8 @@ const AppData = (function () {
     const cat = categorias.find(c => c.nombre === nuevo.cat);
     if (cat) {
       cat.movimientos = (cat.movimientos || 0) + 1;
-      if (nuevo.tipo === 'expense' && esDelMesActual(nuevo.fecha)) {
-        cat.gastado = (cat.gastado || 0) + nuevo.importe;
+      if (esDelMesActual(nuevo.fecha)) {
+        cat.gastado = (cat.gastado || 0) + (nuevo.tipo === 'expense' ? nuevo.importe : -nuevo.importe);
       }
     }
 
@@ -110,8 +110,8 @@ const AppData = (function () {
       const cat = categorias.find(c => c.nombre === borrado.cat);
       if (cat) {
         cat.movimientos = Math.max(0, (cat.movimientos || 0) - 1);
-        if (borrado.tipo === 'expense' && esDelMesActual(borrado.fecha)) {
-          cat.gastado = Math.max(0, (cat.gastado || 0) - borrado.importe);
+        if (esDelMesActual(borrado.fecha)) {
+          cat.gastado = (cat.gastado || 0) - (borrado.tipo === 'expense' ? borrado.importe : -borrado.importe);
         }
       }
     }
@@ -211,8 +211,8 @@ const AppData = (function () {
         m.cat = reassignTo;
         if (destino) {
           destino.movimientos = (destino.movimientos || 0) + 1;
-          if (m.tipo === 'expense' && esDelMesActual(m.fecha)) {
-            destino.gastado = (destino.gastado || 0) + m.importe;
+          if (esDelMesActual(m.fecha)) {
+            destino.gastado = (destino.gastado || 0) + (m.tipo === 'expense' ? m.importe : -m.importe);
           }
         }
       });
@@ -296,13 +296,16 @@ const AppData = (function () {
 
     movimientos.forEach(m => {
       const f = new Date(m.fecha);
-      if (f.getFullYear() !== year || f.getMonth() !== monthIndex || m.tipo !== 'expense') return;
-      total += m.importe;
+      if (f.getFullYear() !== year || f.getMonth() !== monthIndex) return;
+
+      const efecto = m.tipo === 'expense' ? m.importe : -m.importe;
+      total += efecto;
+
       if (!items[m.cat]) {
         const catInfo = categorias.find(c => c.nombre === m.cat);
         items[m.cat] = { nombre: m.cat, color: (catInfo && catInfo.color) || '#5A5F73', gastado: 0 };
       }
-      items[m.cat].gastado += m.importe;
+      items[m.cat].gastado += efecto;
     });
 
     const lista = Object.values(items).sort((a, b) => b.gastado - a.gastado);
