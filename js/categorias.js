@@ -8,8 +8,6 @@
 
 const Categorias = (function () {
 
-  let selectedColor = AppData.getColorPalette()[0];
-
   function formatMoney(valor) {
     return valor.toFixed(2).replace('.', ',') + ' €';
   }
@@ -56,10 +54,10 @@ const Categorias = (function () {
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-icon" style="color:${c.color}">${CategoryIcons.render(c.nombre)}</span>${escapeHtml(c.nombre)}${c.fija ? ` <span class="fija-tag">${fijaTagLabel(c)}</span>` : ''}</div>
+              <div class="cat-name"><span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>${escapeHtml(c.nombre)}${c.fija ? ` <span class="fija-tag">${fijaTagLabel(c)}</span>` : ''}</div>
               <div class="cat-nums">${formatMoney(c.gastado)} ${sinPresupuesto ? '· sin presupuesto' : '/ ' + c.presupuesto + ' €'}</div>
             </div>
-            <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
+            <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
           </div>
         `;
       }).join('');
@@ -110,7 +108,7 @@ const Categorias = (function () {
 
     el.innerHTML = lista.map(c => `
       <div class="manage-row">
-        <span class="cat-icon" style="color:${c.color}">${CategoryIcons.render(c.nombre)}</span>
+        <span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>
         <span class="name">
           ${escapeHtml(c.nombre)}<br>
           <span class="count">${c.movimientos} mov.</span>
@@ -148,26 +146,12 @@ const Categorias = (function () {
     `).join('');
   }
 
-  function buildColorSwatches() {
-    const el = document.getElementById('colorSwatches');
-    if (!el) return;
-    el.innerHTML = AppData.getColorPalette().map(c => `
-      <div class="color-swatch ${c === selectedColor ? 'selected' : ''}" style="background:${c}" onclick="Categorias.selectColor('${c}')"></div>
-    `).join('');
-  }
-
-  function selectColor(color) {
-    selectedColor = color;
-    buildColorSwatches();
-  }
-
   function showCatScreen(which) {
     document.getElementById('view-cat-spend').classList.remove('active');
     document.getElementById('view-cat-manage').classList.remove('active');
 
     if (which === 'manage') {
       document.getElementById('view-cat-manage').classList.add('active');
-      buildColorSwatches();
       renderManageList();
     } else {
       document.getElementById('view-cat-spend').classList.add('active');
@@ -199,7 +183,7 @@ const Categorias = (function () {
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.addCategoria({ nombre, color: selectedColor, presupuesto, fija, mesInicio, recurrencia })
+    AppData.addCategoria({ nombre, presupuesto, fija, mesInicio, recurrencia })
       .then(() => {
         input.value = '';
         budgetInput.value = '';
@@ -341,8 +325,6 @@ const Categorias = (function () {
   return {
     renderSpendList,
     renderManageList,
-    buildColorSwatches,
-    selectColor,
     showCatScreen,
     addCategory,
     deleteCategory,
