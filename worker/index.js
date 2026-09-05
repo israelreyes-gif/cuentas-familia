@@ -256,7 +256,6 @@ async function getCategorias(env) {
   const { results } = await env.DB.prepare(`
     SELECT
       c.nombre,
-      c.color,
       c.presupuesto,
       c.fija,
       c.recurrencia,
@@ -282,7 +281,6 @@ async function getCategorias(env) {
 async function createCategoria(request, env) {
   const body = await request.json();
   const nombre = (body.nombre || '').trim();
-  const color = body.color || '#B7912B';
   const presupuesto = Math.max(0, Number(body.presupuesto) || 0);
   const fija = body.fija ? 1 : 0;
 
@@ -296,8 +294,8 @@ async function createCategoria(request, env) {
 
   try {
     await env.DB.prepare(
-      'INSERT INTO categorias (nombre, color, presupuesto, fija, recurrencia, mes_inicio) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(nombre, color, presupuesto, fija, recurrencia, mesInicio).run();
+      'INSERT INTO categorias (nombre, presupuesto, fija, recurrencia, mes_inicio) VALUES (?, ?, ?, ?, ?)'
+    ).bind(nombre, presupuesto, fija, recurrencia, mesInicio).run();
   } catch (err) {
     if (String(err.message).includes('UNIQUE')) {
       return error('Ya existe una categoría con ese nombre', 409);
@@ -305,7 +303,7 @@ async function createCategoria(request, env) {
     throw err;
   }
 
-  return json({ nombre, color, presupuesto, fija, recurrencia, mes_inicio: mesInicio, gastado: 0, movimientos: 0 }, 201);
+  return json({ nombre, presupuesto, fija, recurrencia, mes_inicio: mesInicio, gastado: 0, movimientos: 0 }, 201);
 }
 
 /** Devuelve la recurrencia validada, o 'mensual' si no viene, o null si es inválida */
