@@ -194,57 +194,59 @@ const AppData = (function () {
     return nueva;
   }
 
-  async function deleteCategoria(nombre, reassignTo) {
-    await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+  async function deleteCategoria(id, reassignTo) {
+    const borrada = categorias.find(c => c.id === id);
+
+    await apiFetch('/api/categorias/' + id, {
       method: 'DELETE',
       body: JSON.stringify(reassignTo ? { reassignTo } : {}),
     });
 
-    categorias = categorias.filter(c => c.nombre !== nombre);
+    categorias = categorias.filter(c => c.id !== id);
 
-    if (reassignTo) {
-      const destino = categorias.find(c => c.nombre === reassignTo);
+    if (reassignTo && borrada) {
+      const destino = categorias.find(c => c.id === reassignTo);
       movimientos.forEach(m => {
-        if (m.cat !== nombre) return;
-        m.cat = reassignTo;
+        if (m.cat !== borrada.nombre) return;
         if (destino) {
+          m.cat = destino.nombre;
           destino.movimientos = (destino.movimientos || 0) + 1;
           if (esDelMesActual(m.fecha)) {
             destino.gastado = (destino.gastado || 0) + (m.tipo === 'expense' ? m.importe : -m.importe);
           }
         }
       });
-    } else {
-      movimientos = movimientos.filter(m => m.cat !== nombre);
+    } else if (borrada) {
+      movimientos = movimientos.filter(m => m.cat !== borrada.nombre);
     }
   }
 
-  async function updateCategoriaPresupuesto(nombre, presupuesto) {
-    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+  async function updateCategoriaPresupuesto(id, presupuesto) {
+    const actualizado = await apiFetch('/api/categorias/' + id, {
       method: 'PATCH',
       body: JSON.stringify({ presupuesto: Math.max(0, presupuesto || 0) }),
     });
-    const cat = categorias.find(c => c.nombre === nombre);
+    const cat = categorias.find(c => c.id === id);
     if (cat) cat.presupuesto = actualizado.presupuesto;
     return cat;
   }
 
-  async function updateCategoriaFija(nombre, fija) {
-    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+  async function updateCategoriaFija(id, fija) {
+    const actualizado = await apiFetch('/api/categorias/' + id, {
       method: 'PATCH',
       body: JSON.stringify({ fija: !!fija }),
     });
-    const cat = categorias.find(c => c.nombre === nombre);
+    const cat = categorias.find(c => c.id === id);
     if (cat) cat.fija = actualizado.fija;
     return cat;
   }
 
-  async function updateCategoriaRecurrencia(nombre, recurrencia, mesInicio) {
-    const actualizado = await apiFetch('/api/categorias/' + encodeURIComponent(nombre), {
+  async function updateCategoriaRecurrencia(id, recurrencia, mesInicio) {
+    const actualizado = await apiFetch('/api/categorias/' + id, {
       method: 'PATCH',
       body: JSON.stringify({ recurrencia, mes_inicio: mesInicio }),
     });
-    const cat = categorias.find(c => c.nombre === nombre);
+    const cat = categorias.find(c => c.id === id);
     if (cat) {
       cat.recurrencia = actualizado.recurrencia;
       cat.mes_inicio = actualizado.mes_inicio;
