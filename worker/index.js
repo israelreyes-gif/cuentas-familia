@@ -262,8 +262,9 @@ async function getCategorias(env) {
       c.recurrencia,
       c.mes_inicio,
       COALESCE(SUM(CASE
-        WHEN m.tipo = 'expense' AND strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
-        THEN m.importe ELSE 0
+        WHEN strftime('%Y-%m', m.fecha) != strftime('%Y-%m','now') THEN 0
+        WHEN m.tipo = 'expense' THEN m.importe
+        ELSE -m.importe
       END), 0) AS gastado,
       COUNT(CASE
         WHEN strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
