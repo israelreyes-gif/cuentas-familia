@@ -92,7 +92,8 @@ export default {
 
       return error('Ruta no encontrada', 404);
     } catch (err) {
-      return error('Error interno: ' + err.message, 500);
+      console.error('Error interno:', err.message, err.stack);
+      return error('Ha ocurrido un error. Inténtalo de nuevo.', 500);
     }
   },
 
