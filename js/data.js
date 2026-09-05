@@ -14,8 +14,6 @@ const AppData = (function () {
   let categorias = [];
   let saldoInicial = 0;
 
-  const colorPalette = ["#B7912B", "#C1443D", "#1E8A63", "#6B5B95", "#3E7C8C", "#8C5E3E", "#5A5F73", "#B0567E"];
-
   async function apiFetch(path, options) {
     const token = Auth.getToken();
     const headers = Object.assign(
@@ -183,11 +181,11 @@ const AppData = (function () {
     return resultado;
   }
 
-  async function addCategoria({ nombre, color, presupuesto, fija, recurrencia, mesInicio }) {
+  async function addCategoria({ nombre, presupuesto, fija, recurrencia, mesInicio }) {
     const nueva = await apiFetch('/api/categorias', {
       method: 'POST',
       body: JSON.stringify({
-        nombre, color, presupuesto: presupuesto || 0, fija: !!fija,
+        nombre, presupuesto: presupuesto || 0, fija: !!fija,
         recurrencia: recurrencia || undefined,
         mes_inicio: mesInicio || undefined,
       }),
@@ -254,10 +252,6 @@ const AppData = (function () {
     return cat;
   }
 
-  function getColorPalette() {
-    return colorPalette;
-  }
-
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
   function getAvailableYears() {
@@ -302,8 +296,7 @@ const AppData = (function () {
       total += efecto;
 
       if (!items[m.cat]) {
-        const catInfo = categorias.find(c => c.nombre === m.cat);
-        items[m.cat] = { nombre: m.cat, color: (catInfo && catInfo.color) || '#5A5F73', gastado: 0 };
+        items[m.cat] = { nombre: m.cat, gastado: 0 };
       }
       items[m.cat].gastado += efecto;
     });
@@ -330,7 +323,6 @@ const AppData = (function () {
     updateCategoriaFija,
     updateCategoriaRecurrencia,
     getProximosGastosFijos,
-    getColorPalette,
     getAvailableYears,
     getYearData,
     getCategoryBreakdown,
