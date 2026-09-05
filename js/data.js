@@ -14,6 +14,11 @@ const AppData = (function () {
   let categorias = [];
   let saldoInicial = 0;
 
+  // ---- estado propio de la Gráfica (ventana móvil de 12 meses) ----
+  let historico = [];        // movimientos de la ventana de 12 meses actualmente cargada
+  let historicoHasta = null; // { anio, mes } del último mes de esa ventana
+  let fechaMinima = null;    // { anio, mes } del movimiento más antiguo que existe, o null si no hay ninguno
+
   async function apiFetch(path, options) {
     const token = Auth.getToken();
     const headers = Object.assign(
@@ -48,14 +53,22 @@ const AppData = (function () {
   }
 
   async function init() {
-    const [cats, movs, config] = await Promise.all([
+    const [cats, movs, config, primeraFecha] = await Promise.all([
       apiFetch('/api/categorias'),
       apiFetch('/api/movimientos'),
       apiFetch('/api/config'),
+      apiFetch('/api/movimientos/primera-fecha'),
     ]);
     categorias = cats;
     movimientos = movs;
     saldoInicial = Number(config.saldo_inicial) || 0;
+
+    if (primeraFecha && primeraFecha.fecha) {
+      const f = new Date(primeraFecha.fecha);
+      fechaMinima = { anio: f.getFullYear(), mes: f.getMonth() + 1 };
+    } else {
+      fechaMinima = null;
+    }
   }
 
   function getSaldoInicial() {
@@ -256,43 +269,59 @@ const AppData = (function () {
 
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-  function getAvailableYears() {
-    const years = new Set(movimientos.map(m => new Date(m.fecha).getFullYear()));
-    years.add(new Date().getFullYear());
-    return [...years].sort();
+  /**
+   * Carga del servidor los movimientos de la ventana de 12 meses que
+   * termina en anio-mes (mes: 1-12), y los deja listos para que
+   * getVentanaMeses()/getCategoryBreakdownMes() los usen. Se llama cada
+   * vez que la Gráfica cambia de mes.
+   */
+  async function cargarHistorico(anio, mes) {
+    const hasta = `${anio}-${String(mes).padStart(2, '0')}`;
+    historico = await apiFetch('/api/movimientos/rango?hasta=' + hasta);
+    historicoHasta = { anio, mes };
   }
 
-  function getYearData(year) {
-    const hoy = new Date();
-    const esAnoActual = year === hoy.getFullYear();
-    const ultimoMes = esAnoActual ? hoy.getMonth() : 11;
+  /** { anio, mes } del movimiento más antiguo registrado, o null si no hay ninguno. */
+  function getFechaMinima() {
+    return fechaMinima;
+  }
 
-    const ingresos = new Array(ultimoMes + 1).fill(0);
-    const gastos = new Array(ultimoMes + 1).fill(0);
+  /** Datos para las barras del gráfico: labels con año ("Sep 26") + ingresos/gastos mes a mes. */
+  function getVentanaMeses() {
+    if (!historicoHasta) return { meses: [], labels: [], ingresos: [], gastos: [] };
 
-    movimientos.forEach(m => {
+    const meses = [];
+    for (let i = 11; i >= 0; i--) {
+      let mes = historicoHasta.mes - i;
+      let anio = historicoHasta.anio;
+      while (mes < 1) { mes += 12; anio -= 1; }
+      meses.push({ anio, mes });
+    }
+
+    const ingresos = meses.map(() => 0);
+    const gastos = meses.map(() => 0);
+
+    historico.forEach(m => {
       const f = new Date(m.fecha);
-      if (f.getFullYear() !== year) return;
-      const mi = f.getMonth();
-      if (mi > ultimoMes) return;
-      if (m.tipo === 'income') ingresos[mi] += m.importe;
-      else gastos[mi] += m.importe;
+      const idx = meses.findIndex(x => x.anio === f.getFullYear() && x.mes === f.getMonth() + 1);
+      if (idx === -1) return;
+      if (m.tipo === 'income') ingresos[idx] += m.importe;
+      else gastos[idx] += m.importe;
     });
 
-    return {
-      labels: MESES.slice(0, ultimoMes + 1),
-      ingresos,
-      gastos,
-    };
+    const labels = meses.map(x => `${MESES[x.mes - 1]} ${String(x.anio).slice(-2)}`);
+
+    return { meses, labels, ingresos, gastos };
   }
 
-  function getCategoryBreakdown(year, monthIndex) {
+  /** Desglose por categoría de un mes concreto (anio, mes 1-12) dentro de la ventana ya cargada. */
+  function getCategoryBreakdownMes(anio, mes) {
     const items = {};
     let total = 0;
 
-    movimientos.forEach(m => {
+    historico.forEach(m => {
       const f = new Date(m.fecha);
-      if (f.getFullYear() !== year || f.getMonth() !== monthIndex) return;
+      if (f.getFullYear() !== anio || f.getMonth() + 1 !== mes) return;
 
       const efecto = m.tipo === 'expense' ? m.importe : -m.importe;
       total += efecto;
@@ -325,9 +354,10 @@ const AppData = (function () {
     updateCategoriaFija,
     updateCategoriaRecurrencia,
     getProximosGastosFijos,
-    getAvailableYears,
-    getYearData,
-    getCategoryBreakdown,
+    cargarHistorico,
+    getFechaMinima,
+    getVentanaMeses,
+    getCategoryBreakdownMes,
   };
 
 })();
