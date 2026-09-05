@@ -82,6 +82,12 @@ export default {
       if (path === '/api/movimientos' && method === 'GET') {
         return await getMovimientos(env);
       }
+      if (path === '/api/movimientos/rango' && method === 'GET') {
+        return await getMovimientosRango(url.searchParams.get('hasta'), env);
+      }
+      if (path === '/api/movimientos/primera-fecha' && method === 'GET') {
+        return await getPrimeraFecha(env);
+      }
       if (path === '/api/movimientos' && method === 'POST') {
         return await createMovimiento(request, env);
       }
@@ -99,7 +105,10 @@ export default {
 
   async scheduled(event, env, ctx) {
     if (event.cron === '0 3 1 * *') {
-      ctx.waitUntil(generarGastosFijos(env));
+      ctx.waitUntil((async () => {
+        await cerrarMesAnterior(env);
+        await generarGastosFijos(env);
+      })());
     }
   },
 };
@@ -116,6 +125,35 @@ async function getConfig(env) {
 // ---------------------------------------------------------------------
 // gastos fijos automáticos
 // ---------------------------------------------------------------------
+
+/**
+ * Cada día 1, antes de generar los gastos fijos del mes nuevo, "cierra"
+ * el mes que acaba de terminar: suma su efecto neto (ingresos - gastos)
+ * al saldo_inicial guardado en config, para que ese saldo represente
+ * siempre "lo que había al empezar el mes en curso". Así el frontend
+ * solo necesita traer los movimientos del mes actual para calcular el
+ * saldo, en vez de todo el histórico.
+ */
+async function cerrarMesAnterior(env) {
+  const hoy = new Date();
+  const inicioMesAnterior = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+  const inicioMesActual = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
+
+  const { neto } = await env.DB.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN tipo = 'expense' THEN -importe ELSE importe END), 0) AS neto
+    FROM movimientos
+    WHERE fecha >= ? AND fecha < ?
+  `).bind(inicioMesAnterior, inicioMesActual).first();
+
+  const row = await env.DB.prepare("SELECT valor FROM config WHERE clave = 'saldo_inicial'").first();
+  const saldoActual = row ? Number(row.valor) : 0;
+  const nuevoSaldo = saldoActual + neto;
+
+  await env.DB.prepare(`
+    INSERT INTO config (clave, valor) VALUES ('saldo_inicial', ?)
+    ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor
+  `).bind(String(nuevoSaldo)).run();
+}
 
 async function generarGastosFijos(env) {
   const hoy = new Date();
@@ -470,10 +508,52 @@ async function getMovimientos(env) {
       m.fecha
     FROM movimientos m
     JOIN categorias c ON c.id = m.categoria_id
+    WHERE strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
     ORDER BY m.fecha DESC, m.id DESC
   `).all();
 
   return json(results);
+}
+
+/**
+ * Movimientos de una ventana de 12 meses que termina en el mes "hasta"
+ * (formato 'YYYY-MM'). Se usa solo para la Gráfica, que necesita
+ * histórico más allá del mes en curso.
+ */
+async function getMovimientosRango(hastaParam, env) {
+  const hoy = new Date();
+  const hasta = hastaParam && /^\d{4}-\d{2}$/.test(hastaParam)
+    ? hastaParam
+    : `${hoy.getUTCFullYear()}-${String(hoy.getUTCMonth() + 1).padStart(2, '0')}`;
+
+  const [anioHasta, mesHasta] = hasta.split('-').map(Number);
+
+  // Fin de la ventana: primer día del mes siguiente al "hasta" (exclusivo).
+  const fin = new Date(Date.UTC(anioHasta, mesHasta, 1)).toISOString().slice(0, 10);
+  // Inicio de la ventana: primer día de 11 meses antes del mes "hasta".
+  const inicio = new Date(Date.UTC(anioHasta, mesHasta - 1 - 11, 1)).toISOString().slice(0, 10);
+
+  const { results } = await env.DB.prepare(`
+    SELECT
+      m.id,
+      m.descripcion AS desc,
+      c.nombre AS cat,
+      m.tipo,
+      m.importe,
+      m.fecha
+    FROM movimientos m
+    JOIN categorias c ON c.id = m.categoria_id
+    WHERE m.fecha >= ? AND m.fecha < ?
+    ORDER BY m.fecha ASC, m.id ASC
+  `).bind(inicio, fin).all();
+
+  return json(results);
+}
+
+/** Fecha del movimiento más antiguo registrado, para saber hasta dónde se puede retroceder en la Gráfica. */
+async function getPrimeraFecha(env) {
+  const row = await env.DB.prepare('SELECT MIN(fecha) AS fecha FROM movimientos').first();
+  return json({ fecha: row ? row.fecha : null });
 }
 
 async function createMovimiento(request, env) {
