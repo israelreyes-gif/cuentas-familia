@@ -176,7 +176,7 @@ const Grafica = (function () {
       const { total, items } = AppData.getCategoryBreakdown(year, monthIndex);
       document.getElementById('drillTotal').textContent = formatMoney(total);
       document.getElementById('drillList').innerHTML = items.map(it => {
-        const pct = total > 0 ? Math.round(it.gastado / total * 100) : 0;
+        const pct = total > 0 ? Math.max(0, Math.min(100, Math.round(it.gastado / total * 100))) : 0;
         return `
           <div class="cat-row">
             <div class="cat-top">
