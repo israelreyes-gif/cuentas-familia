@@ -212,12 +212,24 @@ async function login(request, env) {
 
   if (!username || !password) return error('Usuario y contraseña son obligatorios');
 
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+  const mensajeBloqueo = await checkBloqueoLogin(ip, env);
+  if (mensajeBloqueo) return error(mensajeBloqueo, 429);
+
   const user = await env.DB.prepare('SELECT id, password_salt, password_hash FROM usuarios WHERE username = ?')
     .bind(username).first();
-  if (!user) return error('Usuario o contraseña incorrectos', 401);
 
-  const { hashHex } = await hashPassword(password, user.password_salt);
-  if (hashHex !== user.password_hash) return error('Usuario o contraseña incorrectos', 401);
+  const credencialesValidas = user
+    ? (await hashPassword(password, user.password_salt)).hashHex === user.password_hash
+    : false;
+
+  if (!credencialesValidas) {
+    await registrarIntentoFallido(ip, env);
+    return error('Usuario o contraseña incorrectos', 401);
+  }
+
+  await limpiarIntentosLogin(ip, env);
 
   const token = crypto.randomUUID() + crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -226,6 +238,47 @@ async function login(request, env) {
     .bind(token, user.id, expiresAt).run();
 
   return json({ token });
+}
+
+/**
+ * Rate-limit de login por IP: 5 intentos fallidos en 5 minutos bloquean
+ * 30 minutos. Un login correcto resetea el contador de esa IP.
+ */
+const LOGIN_MAX_INTENTOS = 5;
+const LOGIN_VENTANA_MIN = 5;
+const LOGIN_BLOQUEO_MIN = 30;
+
+async function checkBloqueoLogin(ip, env) {
+  const row = await env.DB.prepare('SELECT bloqueado_hasta FROM intentos_login WHERE ip = ?').bind(ip).first();
+  if (!row || !row.bloqueado_hasta) return null;
+
+  const bloqueadoHasta = new Date(row.bloqueado_hasta);
+  if (bloqueadoHasta <= new Date()) return null;
+
+  const minutosRestantes = Math.max(1, Math.ceil((bloqueadoHasta - new Date()) / 60000));
+  return `Demasiados intentos fallidos. Inténtalo de nuevo en ${minutosRestantes} minuto(s).`;
+}
+
+async function registrarIntentoFallido(ip, env) {
+  const ahora = new Date();
+  const row = await env.DB.prepare('SELECT intentos, primer_intento FROM intentos_login WHERE ip = ?').bind(ip).first();
+
+  const ventanaExpirada = !row || (ahora - new Date(row.primer_intento)) > LOGIN_VENTANA_MIN * 60 * 1000;
+
+  const intentos = ventanaExpirada ? 1 : row.intentos + 1;
+  const primerIntento = ventanaExpirada ? ahora.toISOString() : row.primer_intento;
+  const bloqueadoHasta = intentos >= LOGIN_MAX_INTENTOS
+    ? new Date(ahora.getTime() + LOGIN_BLOQUEO_MIN * 60 * 1000).toISOString()
+    : null;
+
+  await env.DB.prepare(`
+    INSERT INTO intentos_login (ip, intentos, primer_intento, bloqueado_hasta) VALUES (?, ?, ?, ?)
+    ON CONFLICT(ip) DO UPDATE SET intentos = excluded.intentos, primer_intento = excluded.primer_intento, bloqueado_hasta = excluded.bloqueado_hasta
+  `).bind(ip, intentos, primerIntento, bloqueadoHasta).run();
+}
+
+async function limpiarIntentosLogin(ip, env) {
+  await env.DB.prepare('DELETE FROM intentos_login WHERE ip = ?').bind(ip).run();
 }
 
 async function requireAuth(request, env) {
