@@ -59,18 +59,6 @@ html,body{
   z-index:1;
 }
 
-/*
- * Deslizamiento horizontal: lo activa App.showTab() al cambiar de
- * pestaña por el menú inferior (Movimiento/Categorías/Gráfica). Solo
- * usa opacity/translateX (nada de 3D), así que no tiene el problema de
- * recorte que sí daba el pase de página con rotateY en iOS. El resto de
- * cambios de vista (login→app, Administrar↔Volver dentro de Categorías)
- * siguen con el fundido corto de siempre.
- */
-.view.slide{
-  transition:transform 2s cubic-bezier(.25,.1,.25,1), opacity 2s ease;
-}
-
 .view-header{
   display:flex;
   justify-content:space-between;
