@@ -176,7 +176,7 @@ const Movimientos = (function () {
       })
       .catch((err) => {
         UIHelpers.setButtonLoading(btn, false);
-        alert(err.message || 'No se pudo guardar el movimiento.');
+        UIHelpers.showToast(err.message || 'No se pudo guardar el movimiento.');
       });
   }
 
@@ -192,7 +192,7 @@ const Movimientos = (function () {
       })
       .catch((err) => {
         UIHelpers.setButtonLoading(btn, false);
-        alert(err.message || 'No se pudo eliminar el movimiento.');
+        UIHelpers.showToast(err.message || 'No se pudo eliminar el movimiento.');
       });
   }
 
