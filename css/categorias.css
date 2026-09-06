@@ -80,25 +80,25 @@
 /*
  * Recurrencia (categorías fijas anuales / bimestrales / etc.): el
  * despliegue/colapso al marcar o desmarcar "Fija" se anima con
- * grid-template-rows (0fr ↔ 1fr) en vez de con transform. Es la técnica
- * recomendada para animar altura de contenido variable, y no anima
- * ninguna transformación sobre un contenedor con scroll — así que no
- * tiene nada que ver con los problemas que dieron las transiciones de
- * pestaña en iOS.
+ * max-height + overflow:hidden en vez de con transform. La primera
+ * versión usaba grid-template-rows (0fr ↔ 1fr), pero los <select> de
+ * dentro tienen una altura mínima que Safari no reducía del todo,
+ * dejando un resto visible incluso colapsado. max-height con un valor
+ * fijo de sobra sí garantiza un colapso real a 0. No anima ninguna
+ * transformación sobre un contenedor con scroll, así que sigue sin
+ * relación con los problemas que dieron las transiciones de pestaña.
  */
 .recur-wrap{
   width:100%;
-  margin-top:8px;
-  display:grid;
-  grid-template-rows:0fr;
-  transition:grid-template-rows .3s ease;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height .3s ease;
 }
 .recur-wrap.open{
-  grid-template-rows:1fr;
+  max-height:160px;
 }
-.recur-wrap > .recur-block{
-  overflow:hidden;
-  min-height:0;
+.recur-wrap .recur-block{
+  margin-top:8px;
   padding:10px 12px;
   background:var(--paper-dim);
   border:1px dashed var(--rule);
