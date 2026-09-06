@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="css/categorias.css">
 <link rel="stylesheet" href="css/grafica.css">
 <link rel="stylesheet" href="css/loading.css">
+<link rel="stylesheet" href="css/buscador.css">
 <link rel="stylesheet" href="css/auth.css">
 </head>
 <body>
@@ -227,6 +228,43 @@
 
   </div>
 
+  <!-- VISTA 4: BUSCADOR -->
+  <div class="view" id="view-buscar">
+    <h2 class="section-title">Buscador</h2>
+    <p class="section-sub">Busca en todo el histórico, no solo el mes en curso.</p>
+
+    <label>Descripción</label>
+    <input type="text" id="buscarTexto" placeholder="Ej. Mercadona">
+
+    <label>Categoría</label>
+    <select id="buscarCategoria">
+      <option value="">Todas las categorías</option>
+    </select>
+
+    <label>Tipo</label>
+    <select id="buscarTipo">
+      <option value="">Todos</option>
+      <option value="expense">Gasto</option>
+      <option value="income">Ingreso</option>
+    </select>
+
+    <div class="search-fields-row">
+      <div>
+        <label>Desde</label>
+        <div class="date-field"><input type="date" id="buscarDesde"></div>
+      </div>
+      <div>
+        <label>Hasta</label>
+        <div class="date-field"><input type="date" id="buscarHasta"></div>
+      </div>
+    </div>
+
+    <button class="save-btn" id="buscarBtn" onclick="Buscador.buscar()">Buscar</button>
+
+    <div class="search-summary" id="buscarResumen"></div>
+    <div id="buscarResultados"></div>
+  </div>
+
   </div>
 
   <div class="bottom-nav hidden">
@@ -261,6 +299,15 @@
       </span>
       <span class="nav-label">Gráfica</span>
     </div>
+    <div class="nav-btn" data-tab="buscar">
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <path d="m20 20-3.5-3.5"/>
+        </svg>
+      </span>
+      <span class="nav-label">Buscador</span>
+    </div>
   </div>
 
   <div class="toast-container" id="toastContainer"></div>
@@ -275,6 +322,7 @@
 <script src="js/movimientos.js"></script>
 <script src="js/categorias.js"></script>
 <script src="js/grafica.js"></script>
+<script src="js/buscador.js"></script>
 <script src="js/app.js"></script>
 
 </body>
