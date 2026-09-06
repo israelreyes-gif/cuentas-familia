@@ -13,6 +13,7 @@ const AppData = (function () {
   let movimientos = [];
   let categorias = [];
   let saldoInicial = 0;
+  let saldoActualizadoEn = null; // fecha ISO de la última vez que se cerró un mes correctamente
 
   // ---- estado propio de la Gráfica (ventana móvil de 12 meses) ----
   let historico = [];        // movimientos de la ventana de 12 meses actualmente cargada
@@ -62,6 +63,7 @@ const AppData = (function () {
     categorias = cats;
     movimientos = movs;
     saldoInicial = Number(config.saldo_inicial) || 0;
+    saldoActualizadoEn = config.saldo_actualizado_en || null;
 
     if (primeraFecha && primeraFecha.fecha) {
       const f = new Date(primeraFecha.fecha);
@@ -73,6 +75,20 @@ const AppData = (function () {
 
   function getSaldoInicial() {
     return saldoInicial;
+  }
+
+  /**
+   * true si el cierre de mes (cron del día 1) no se ha ejecutado en lo
+   * que va de mes actual — señal de que algo falló y el saldo podría
+   * estar desactualizado. Si nunca se ha registrado ninguna fecha
+   * (config recién migrado), también se considera desactualizado, para
+   * no dar una falsa sensación de seguridad.
+   */
+  function getCierreDesactualizado() {
+    if (!saldoActualizadoEn) return true;
+    const f = new Date(saldoActualizadoEn);
+    const hoy = new Date();
+    return !(f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth());
   }
 
   /** Saldo acumulado real: saldo inicial + todos los ingresos - todos los gastos, desde siempre. */
@@ -351,6 +367,7 @@ const AppData = (function () {
   return {
     init,
     getSaldoInicial,
+    getCierreDesactualizado,
     getSaldoActual,
     getMovimientos,
     addMovimiento,
