@@ -121,8 +121,11 @@ export default {
 // ---------------------------------------------------------------------
 
 async function getConfig(env) {
-  const row = await env.DB.prepare("SELECT valor FROM config WHERE clave = 'saldo_inicial'").first();
-  return json({ saldo_inicial: row ? Number(row.valor) : 0 });
+  const row = await env.DB.prepare("SELECT valor, actualizado_en FROM config WHERE clave = 'saldo_inicial'").first();
+  return json({
+    saldo_inicial: row ? Number(row.valor) : 0,
+    saldo_actualizado_en: row ? row.actualizado_en : null,
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -153,9 +156,9 @@ async function cerrarMesAnterior(env) {
   const nuevoSaldo = saldoActual + neto;
 
   await env.DB.prepare(`
-    INSERT INTO config (clave, valor) VALUES ('saldo_inicial', ?)
-    ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor
-  `).bind(String(nuevoSaldo)).run();
+    INSERT INTO config (clave, valor, actualizado_en) VALUES ('saldo_inicial', ?, ?)
+    ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, actualizado_en = excluded.actualizado_en
+  `).bind(String(nuevoSaldo), new Date().toISOString()).run();
 }
 
 async function generarGastosFijos(env) {
