@@ -107,7 +107,7 @@ const Categorias = (function () {
           <span class="spinner field-spinner"></span>
         </span>
         <button class="delete-btn" onclick="Categorias.deleteCategory(${c.id}, this)">✕</button>
-        ${c.fija ? `
+        <div class="recur-wrap ${c.fija ? 'open' : ''}">
           <div class="recur-block">
             <div class="recur-title">Recurrencia</div>
             <div class="recur-fields">
@@ -125,7 +125,7 @@ const Categorias = (function () {
               </div>
             </div>
           </div>
-        ` : ''}
+        </div>
       </div>
     `).join('');
   }
@@ -275,14 +275,17 @@ const Categorias = (function () {
     checkboxEl.disabled = true;
     AppData.updateCategoriaFija(id, checked)
       .then(() => {
+        const wrap = checkboxEl.closest('.manage-row').querySelector('.recur-wrap');
+        if (wrap) wrap.classList.toggle('open', checked);
         Movimientos.renderCategorySelect();
         Movimientos.renderUpcomingFixed();
-        renderManageList();
       })
       .catch((err) => {
         checkboxEl.checked = !checked;
-        checkboxEl.disabled = false;
         UIHelpers.showToast(err.message || 'No se pudo actualizar la categoría.');
+      })
+      .finally(() => {
+        checkboxEl.disabled = false;
       });
   }
 
@@ -306,9 +309,9 @@ const Categorias = (function () {
   }
 
   function toggleNewCatRecurBlock(checked) {
-    const bloque = document.getElementById('newCatRecurBlock');
-    if (!bloque) return;
-    bloque.classList.toggle('hidden', !checked);
+    const wrap = document.getElementById('newCatRecurWrap');
+    if (!wrap) return;
+    wrap.classList.toggle('open', checked);
   }
 
   return {
