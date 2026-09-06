@@ -65,6 +65,11 @@ const Movimientos = (function () {
     select.innerHTML = `<option value="" disabled selected>Selecciona una categoría</option>` + opciones;
   }
 
+  function formatFechaCorta(fechaStr) {
+    const f = new Date(fechaStr);
+    return `${f.getDate()} ${UIHelpers.MESES_ABREV[f.getMonth()].toLowerCase()}`;
+  }
+
   function renderLedgerList() {
     const list = document.getElementById('ledgerList');
     if (!list) return;
@@ -80,7 +85,7 @@ const Movimientos = (function () {
         <span class="cat-icon">${CategoryIcons.render(m.cat)}</span>
         <div class="ledger-main">
           <div class="ledger-desc">${UIHelpers.escapeHtml(m.desc)}</div>
-          <div class="ledger-cat">${UIHelpers.escapeHtml(m.cat)}</div>
+          <div class="ledger-cat">${UIHelpers.escapeHtml(m.cat)} · ${formatFechaCorta(m.fecha)}</div>
         </div>
         <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${UIHelpers.formatMoney(m.importe)}</div>
         <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
