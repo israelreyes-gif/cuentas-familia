@@ -14,6 +14,7 @@
  *   UIHelpers.MESES_ABREV[0];           // "Ene"
  *   UIHelpers.MESES_LARGO[0];           // "Enero"
  *   UIHelpers.showToast('No se pudo guardar');
+ *   const ok = await UIHelpers.showConfirm('¿Eliminar este movimiento?');
  * -----------------------------------------------------------------------
  */
 
@@ -127,6 +128,47 @@ const UIHelpers = (function () {
     setTimeout(() => toast.remove(), 250);
   }
 
+  /**
+   * Sustituye a confirm() nativo. Muestra un modal con el estilo de la
+   * app y devuelve una promesa: true si el usuario confirma, false si
+   * cancela (o toca fuera del cuadro).
+   *
+   *   const ok = await UIHelpers.showConfirm('¿Eliminar este movimiento?');
+   *   if (!ok) return;
+   */
+  function showConfirm(mensaje, opciones) {
+    const textoConfirmar = (opciones && opciones.confirmar) || 'Eliminar';
+    const textoCancelar = (opciones && opciones.cancelar) || 'Cancelar';
+
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      overlay.innerHTML = `
+        <div class="confirm-box">
+          <p class="confirm-text">${escapeHtml(mensaje)}</p>
+          <div class="confirm-actions">
+            <button class="confirm-cancel">${escapeHtml(textoCancelar)}</button>
+            <button class="confirm-ok">${escapeHtml(textoConfirmar)}</button>
+          </div>
+        </div>
+      `;
+
+      const cerrar = (resultado) => {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 200);
+        resolve(resultado);
+      };
+
+      overlay.querySelector('.confirm-cancel').addEventListener('click', () => cerrar(false));
+      overlay.querySelector('.confirm-ok').addEventListener('click', () => cerrar(true));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) cerrar(false); });
+
+      const contenedor = document.querySelector('.phone') || document.body;
+      contenedor.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('show'));
+    });
+  }
+
   // ---- API pública del módulo ----
   return {
     formatMoney,
@@ -137,6 +179,7 @@ const UIHelpers = (function () {
     setButtonLoading,
     withFieldLoading,
     showToast,
+    showConfirm,
   };
 
 })();
