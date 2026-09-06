@@ -152,7 +152,11 @@ const Categorias = (function () {
     const btn = document.querySelector('.add-cat-btn');
 
     const nombre = input.value.trim();
-    if (!nombre) return;
+    if (!nombre) {
+      input.style.borderColor = 'var(--expense)';
+      UIHelpers.showToast('Escribe un nombre para la categoría.');
+      return;
+    }
 
     if (AppData.categoriaExiste(nombre)) {
       input.style.borderColor = 'var(--expense)';
