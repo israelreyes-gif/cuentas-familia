@@ -1,19 +1,36 @@
 /**
  * js/ui-helpers.js
  * -----------------------------------------------------------------------
- * Ayudas de UI reutilizables para dar feedback de carga en cualquier
- * acción (guardar, añadir, borrar, cambiar de año, abrir un detalle...).
- *
- * No conoce nada de movimientos, categorías ni gráfica: solo sabe mostrar
- * y quitar spinners. El resto de módulos lo usan así:
+ * Ayudas reutilizables en toda la app: feedback de carga (spinners,
+ * overlays), formateo de dinero, escape de HTML, y los nombres de los
+ * meses — todo en un solo sitio para no tener copias sueltas en cada
+ * módulo. El resto de módulos lo usan así:
  *
  *   UIHelpers.withOverlay(contenedor, 400, () => { ...repintar... });
  *   UIHelpers.setButtonLoading(boton, true);
  *   UIHelpers.withFieldLoading(input, 400, () => { ...guardar valor... });
+ *   UIHelpers.formatMoney(12.5);        // "12,50 €"
+ *   UIHelpers.escapeHtml(texto);
+ *   UIHelpers.MESES_ABREV[0];           // "Ene"
+ *   UIHelpers.MESES_LARGO[0];           // "Enero"
  * -----------------------------------------------------------------------
  */
 
 const UIHelpers = (function () {
+
+  const MESES_ABREV = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  function formatMoney(valor) {
+    return valor.toFixed(2).replace('.', ',') + ' €';
+  }
+
+  /** Evita inyectar HTML si un texto (nombre de categoría, descripción...) contiene < > etc. */
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
 
   /**
    * Cubre `container` con un overlay + spinner durante `ms` milisegundos
@@ -81,6 +98,10 @@ const UIHelpers = (function () {
 
   // ---- API pública del módulo ----
   return {
+    formatMoney,
+    escapeHtml,
+    MESES_ABREV,
+    MESES_LARGO,
     withOverlay,
     setButtonLoading,
     withFieldLoading,
