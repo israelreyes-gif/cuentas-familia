@@ -15,7 +15,7 @@
  *
  * Depende de:
  *   - AppData    (js/data.js)        → carga y cálculo de la ventana de 12 meses
- *   - UIHelpers  (js/ui-helpers.js)  → spinners y overlays de carga
+ *   - UIHelpers  (js/ui-helpers.js)  → spinners, overlays, formato de dinero, meses
  *   - Chart      (librería externa Chart.js, cargada antes que este fichero)
  * -----------------------------------------------------------------------
  */
@@ -27,8 +27,6 @@ const Grafica = (function () {
   const COLOR_NET = '#B7912B';
   const DOUBLE_TAP_MS = 320;
 
-  const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
   let mesFin = null; // { anio, mes } — último mes de la ventana de 12 meses actualmente mostrada
   let chart = null;
   let lastTapTime = 0;
@@ -36,17 +34,6 @@ const Grafica = (function () {
   let tapTimeout = null;
 
   // ---- utilidades internas ----
-
-  function formatMoney(valor) {
-    return valor.toFixed(2).replace('.', ',') + ' €';
-  }
-
-  /** Evita inyectar HTML si el nombre de categoría contiene < > etc. */
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
 
   function esMesActual(anio, mes) {
     const hoy = new Date();
@@ -126,7 +113,7 @@ const Grafica = (function () {
       || inicio.anio > fechaMin.anio
       || (inicio.anio === fechaMin.anio && inicio.mes > fechaMin.mes);
 
-    document.getElementById('yearLabel').textContent = `${MESES_LARGO[mesFin.mes - 1]} ${mesFin.anio}`;
+    document.getElementById('yearLabel').textContent = `${UIHelpers.MESES_LARGO[mesFin.mes - 1]} ${mesFin.anio}`;
     document.getElementById('yearPrev').disabled = !puedeRetroceder;
     document.getElementById('yearNext').disabled = esMesActual(mesFin.anio, mesFin.mes);
   }
@@ -195,12 +182,12 @@ const Grafica = (function () {
     const gastos = ventana.gastos[idx];
     const neto = ingresos - gastos;
 
-    document.getElementById('monthInfoTitle').textContent = `${MESES_LARGO[mes - 1]} ${anio}`;
-    document.getElementById('miIngresos').textContent = formatMoney(ingresos);
-    document.getElementById('miGastos').textContent = formatMoney(gastos);
+    document.getElementById('monthInfoTitle').textContent = `${UIHelpers.MESES_LARGO[mes - 1]} ${anio}`;
+    document.getElementById('miIngresos').textContent = UIHelpers.formatMoney(ingresos);
+    document.getElementById('miGastos').textContent = UIHelpers.formatMoney(gastos);
 
     const netoEl = document.getElementById('miNeto');
-    netoEl.textContent = (neto >= 0 ? '+' : '') + formatMoney(neto);
+    netoEl.textContent = (neto >= 0 ? '+' : '') + UIHelpers.formatMoney(neto);
     netoEl.className = 'mi-amt ' + (neto >= 0 ? 'income' : 'expense');
 
     document.getElementById('monthInfo').classList.remove('hidden');
@@ -212,19 +199,19 @@ const Grafica = (function () {
     document.getElementById('graf-chart-screen').classList.add('hidden');
     document.getElementById('graf-drill-screen').style.display = 'block';
 
-    document.getElementById('drillTitle').textContent = `${MESES_LARGO[mes - 1]} ${anio}`;
+    document.getElementById('drillTitle').textContent = `${UIHelpers.MESES_LARGO[mes - 1]} ${anio}`;
     document.getElementById('drillTotal').textContent = '···';
 
     UIHelpers.withOverlay(document.getElementById('drillList'), 300, () => {
       const { total, items } = AppData.getCategoryBreakdownMes(anio, mes);
-      document.getElementById('drillTotal').textContent = formatMoney(total);
+      document.getElementById('drillTotal').textContent = UIHelpers.formatMoney(total);
       document.getElementById('drillList').innerHTML = items.map(it => {
         const pct = total > 0 ? Math.max(0, Math.min(100, Math.round(it.gastado / total * 100))) : 0;
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-icon">${CategoryIcons.render(it.nombre)}</span>${escapeHtml(it.nombre)}</div>
-              <div class="cat-nums">${formatMoney(it.gastado)} · ${pct}%</div>
+              <div class="cat-name"><span class="cat-icon">${CategoryIcons.render(it.nombre)}</span>${UIHelpers.escapeHtml(it.nombre)}</div>
+              <div class="cat-nums">${UIHelpers.formatMoney(it.gastado)} · ${pct}%</div>
             </div>
             <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
           </div>
