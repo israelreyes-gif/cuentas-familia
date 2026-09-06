@@ -179,7 +179,7 @@ const Categorias = (function () {
       })
       .catch((err) => {
         input.style.borderColor = 'var(--expense)';
-        alert(err.message || 'No se pudo crear la categoría.');
+        UIHelpers.showToast(err.message || 'No se pudo crear la categoría.');
       })
       .finally(() => {
         UIHelpers.setButtonLoading(btn, false);
@@ -201,7 +201,7 @@ const Categorias = (function () {
           showReassignPrompt(id, err.data.count, btn);
         } else {
           if (btn) UIHelpers.setButtonLoading(btn, false);
-          alert(err.message || 'No se pudo borrar la categoría.');
+          UIHelpers.showToast(err.message || 'No se pudo borrar la categoría.');
         }
       });
   }
@@ -213,7 +213,7 @@ const Categorias = (function () {
 
     const otras = AppData.getCategoriasOrdenadas().filter(c => c.id !== id);
     if (otras.length === 0) {
-      alert('No hay otra categoría a la que mover estos movimientos. Crea una nueva antes de borrar esta.');
+      UIHelpers.showToast('No hay otra categoría a la que mover estos movimientos. Crea una nueva antes de borrar esta.');
       return;
     }
 
@@ -250,7 +250,7 @@ const Categorias = (function () {
       })
       .catch((err) => {
         UIHelpers.setButtonLoading(btn, false);
-        alert(err.message || 'No se pudo mover y borrar la categoría.');
+        UIHelpers.showToast(err.message || 'No se pudo mover y borrar la categoría.');
       });
   }
 
@@ -262,7 +262,7 @@ const Categorias = (function () {
         Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
-        alert(err.message || 'No se pudo actualizar el presupuesto.');
+        UIHelpers.showToast(err.message || 'No se pudo actualizar el presupuesto.');
       });
   }
 
@@ -277,7 +277,7 @@ const Categorias = (function () {
       .catch((err) => {
         checkboxEl.checked = !checked;
         checkboxEl.disabled = false;
-        alert(err.message || 'No se pudo actualizar la categoría.');
+        UIHelpers.showToast(err.message || 'No se pudo actualizar la categoría.');
       });
   }
 
@@ -293,7 +293,7 @@ const Categorias = (function () {
         Movimientos.renderUpcomingFixed();
       })
       .catch((err) => {
-        alert(err.message || 'No se pudo actualizar la recurrencia.');
+        UIHelpers.showToast(err.message || 'No se pudo actualizar la recurrencia.');
       })
       .finally(() => {
         selects.forEach(s => s.disabled = false);
