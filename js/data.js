@@ -166,8 +166,6 @@ const AppData = (function () {
     return diff % intervalo === 0;
   }
 
-  const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
   /** Gastos fijos previstos para los próximos 2 meses (sin contar el actual), respetando la recurrencia de cada categoría. */
   function getProximosGastosFijos() {
     const hoy = new Date();
@@ -184,7 +182,7 @@ const AppData = (function () {
       const total = cats.reduce((sum, c) => sum + c.presupuesto, 0);
 
       resultado.push({
-        mes: MESES_LARGO[fecha.getMonth()],
+        mes: UIHelpers.MESES_LARGO[fecha.getMonth()],
         anio: fecha.getFullYear(),
         categorias: cats,
         total,
@@ -267,8 +265,6 @@ const AppData = (function () {
     return cat;
   }
 
-  const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
   /**
    * Carga del servidor los movimientos de la ventana de 12 meses que
    * termina en anio-mes (mes: 1-12), y los deja listos para que
@@ -309,7 +305,7 @@ const AppData = (function () {
       else gastos[idx] += m.importe;
     });
 
-    const labels = meses.map(x => `${MESES[x.mes - 1]} ${String(x.anio).slice(-2)}`);
+    const labels = meses.map(x => `${UIHelpers.MESES_ABREV[x.mes - 1]} ${String(x.anio).slice(-2)}`);
 
     return { meses, labels, ingresos, gastos };
   }
