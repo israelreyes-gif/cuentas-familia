@@ -88,6 +88,9 @@ export default {
       if (path === '/api/movimientos/primera-fecha' && method === 'GET') {
         return await getPrimeraFecha(env);
       }
+      if (path === '/api/movimientos/buscar' && method === 'GET') {
+        return await buscarMovimientos(url.searchParams, env);
+      }
       if (path === '/api/movimientos' && method === 'POST') {
         return await createMovimiento(request, env);
       }
@@ -554,6 +557,62 @@ async function getMovimientosRango(hastaParam, env) {
 async function getPrimeraFecha(env) {
   const row = await env.DB.prepare('SELECT MIN(fecha) AS fecha FROM movimientos').first();
   return json({ fecha: row ? row.fecha : null });
+}
+
+/**
+ * Buscador: filtra por texto (descripción), categoría, tipo y rango de
+ * fechas — en todo el histórico, no solo el mes en curso. Máximo 100
+ * resultados, del más reciente al más antiguo.
+ */
+async function buscarMovimientos(params, env) {
+  const texto = (params.get('texto') || '').trim();
+  const categoriaId = params.get('categoria_id');
+  const tipo = params.get('tipo');
+  const desde = params.get('desde');
+  const hasta = params.get('hasta');
+
+  const condiciones = [];
+  const binds = [];
+
+  if (texto) {
+    condiciones.push('m.descripcion LIKE ?');
+    binds.push(`%${texto}%`);
+  }
+  if (categoriaId) {
+    condiciones.push('m.categoria_id = ?');
+    binds.push(Number(categoriaId));
+  }
+  if (tipo === 'expense' || tipo === 'income') {
+    condiciones.push('m.tipo = ?');
+    binds.push(tipo);
+  }
+  if (desde) {
+    condiciones.push('m.fecha >= ?');
+    binds.push(desde);
+  }
+  if (hasta) {
+    condiciones.push('m.fecha <= ?');
+    binds.push(hasta);
+  }
+
+  const where = condiciones.length ? 'WHERE ' + condiciones.join(' AND ') : '';
+
+  const { results } = await env.DB.prepare(`
+    SELECT
+      m.id,
+      m.descripcion AS desc,
+      c.nombre AS cat,
+      m.tipo,
+      m.importe,
+      m.fecha
+    FROM movimientos m
+    JOIN categorias c ON c.id = m.categoria_id
+    ${where}
+    ORDER BY m.fecha DESC, m.id DESC
+    LIMIT 100
+  `).bind(...binds).all();
+
+  return json(results);
 }
 
 async function createMovimiento(request, env) {
