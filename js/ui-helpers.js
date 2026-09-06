@@ -13,6 +13,7 @@
  *   UIHelpers.escapeHtml(texto);
  *   UIHelpers.MESES_ABREV[0];           // "Ene"
  *   UIHelpers.MESES_LARGO[0];           // "Enero"
+ *   UIHelpers.showToast('No se pudo guardar');
  * -----------------------------------------------------------------------
  */
 
@@ -96,6 +97,36 @@ const UIHelpers = (function () {
     }, ms);
   }
 
+  /**
+   * Muestra un aviso flotante con el estilo de la app (sustituye a los
+   * alert() nativos). Se apila si ya hay otro visible, y desaparece solo
+   * pasados unos segundos o al tocarlo.
+   *
+   *   UIHelpers.showToast('No se pudo guardar el movimiento.');
+   *   UIHelpers.showToast('Categoría creada', 'ok');
+   */
+  function showToast(mensaje, tipo) {
+    const container = document.getElementById('toastContainer');
+    if (!container) { console.warn('[UIHelpers] falta #toastContainer en el HTML'); return; }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${tipo || 'error'}`;
+    toast.textContent = mensaje;
+    toast.addEventListener('click', () => quitarToast(toast));
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    setTimeout(() => quitarToast(toast), 3500);
+  }
+
+  function quitarToast(toast) {
+    if (!toast.parentElement) return;
+    toast.classList.remove('show');
+    toast.classList.add('hide');
+    setTimeout(() => toast.remove(), 250);
+  }
+
   // ---- API pública del módulo ----
   return {
     formatMoney,
@@ -105,6 +136,7 @@ const UIHelpers = (function () {
     withOverlay,
     setButtonLoading,
     withFieldLoading,
+    showToast,
   };
 
 })();
