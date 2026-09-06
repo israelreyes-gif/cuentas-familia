@@ -156,6 +156,7 @@ const Categorias = (function () {
 
     if (AppData.categoriaExiste(nombre)) {
       input.style.borderColor = 'var(--expense)';
+      UIHelpers.showToast('Ya existe una categoría con ese nombre.');
       return;
     }
     input.style.borderColor = '';
