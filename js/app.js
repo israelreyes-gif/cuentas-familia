@@ -22,6 +22,9 @@ const App = (function () {
     } else if (name === 'graf') {
       document.getElementById('view-graf').classList.add('active');
       Grafica.show();
+    } else if (name === 'buscar') {
+      document.getElementById('view-buscar').classList.add('active');
+      Buscador.init();
     }
   }
 
