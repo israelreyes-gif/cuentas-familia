@@ -154,7 +154,10 @@ const Movimientos = (function () {
     } else {
       descInput.style.borderColor = '';
     }
-    if (huboError) return;
+    if (huboError) {
+      UIHelpers.showToast('Completa los campos obligatorios.');
+      return;
+    }
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner on-dark"></span> Guardando...');
 
