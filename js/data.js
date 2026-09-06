@@ -282,6 +282,22 @@ const AppData = (function () {
     return fechaMinima;
   }
 
+  /**
+   * Buscador: filtra en todo el histórico (no solo el mes actual ni la
+   * ventana de la Gráfica). Devuelve hasta 100 resultados, del más
+   * reciente al más antiguo. No toca el estado del resto de la app.
+   */
+  async function buscarMovimientos({ texto, categoriaId, tipo, desde, hasta }) {
+    const params = new URLSearchParams();
+    if (texto) params.set('texto', texto);
+    if (categoriaId) params.set('categoria_id', categoriaId);
+    if (tipo) params.set('tipo', tipo);
+    if (desde) params.set('desde', desde);
+    if (hasta) params.set('hasta', hasta);
+
+    return apiFetch('/api/movimientos/buscar?' + params.toString());
+  }
+
   /** Datos para las barras del gráfico: labels con año ("Sep 26") + ingresos/gastos mes a mes. */
   function getVentanaMeses() {
     if (!historicoHasta) return { meses: [], labels: [], ingresos: [], gastos: [] };
@@ -352,6 +368,7 @@ const AppData = (function () {
     getProximosGastosFijos,
     cargarHistorico,
     getFechaMinima,
+    buscarMovimientos,
     getVentanaMeses,
     getCategoryBreakdownMes,
   };
