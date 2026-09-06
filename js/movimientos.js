@@ -184,19 +184,21 @@ const Movimientos = (function () {
   }
 
   function deleteMovement(id, btn) {
-    if (!confirm('¿Eliminar este movimiento?')) return;
+    UIHelpers.showConfirm('¿Eliminar este movimiento?').then((confirmado) => {
+      if (!confirmado) return;
 
-    UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
+      UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
-    AppData.deleteMovimiento(id)
-      .then(() => {
-        renderLedgerList();
-        renderHeader();
-      })
-      .catch((err) => {
-        UIHelpers.setButtonLoading(btn, false);
-        UIHelpers.showToast(err.message || 'No se pudo eliminar el movimiento.');
-      });
+      AppData.deleteMovimiento(id)
+        .then(() => {
+          renderLedgerList();
+          renderHeader();
+        })
+        .catch((err) => {
+          UIHelpers.setButtonLoading(btn, false);
+          UIHelpers.showToast(err.message || 'No se pudo eliminar el movimiento.');
+        });
+    });
   }
 
   function init() {
