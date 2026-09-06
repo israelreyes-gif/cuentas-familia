@@ -41,3 +41,46 @@
 .toast.hide{ opacity:0; transform:translateY(6px); }
 .toast-error{ background:var(--expense); }
 .toast-ok{ background:var(--income); }
+
+/* ---- modal de confirmación (sustituye a confirm()) ---- */
+.confirm-overlay{
+  position:absolute; inset:0;
+  background:rgba(31,42,36,.45);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+  opacity:0;
+  transition:opacity .18s ease;
+  z-index:60;
+}
+.confirm-overlay.show{ opacity:1; }
+.confirm-box{
+  background:var(--paper);
+  border-radius:var(--radius);
+  padding:20px;
+  width:100%;
+  max-width:320px;
+  box-shadow:0 12px 30px rgba(31,42,36,.3);
+  transform:translateY(8px);
+  transition:transform .18s ease;
+}
+.confirm-overlay.show .confirm-box{ transform:translateY(0); }
+.confirm-text{
+  margin:0 0 16px;
+  font-family:'Inter',sans-serif;
+  font-size:14.5px;
+  color:var(--ink);
+  line-height:1.4;
+}
+.confirm-actions{ display:flex; gap:10px; }
+.confirm-cancel, .confirm-ok{
+  flex:1;
+  padding:11px;
+  border-radius:10px;
+  border:none;
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:13.5px;
+  cursor:pointer;
+}
+.confirm-cancel{ background:var(--paper-dim); color:var(--ink); }
+.confirm-ok{ background:var(--expense); color:#fff; }
