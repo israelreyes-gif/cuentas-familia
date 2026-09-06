@@ -11,3 +11,33 @@
   border-radius:inherit;z-index:6;
 }
 #ledgerList,#catSpendList,#drillList,.chart-wrap{position:relative;min-height:40px;}
+
+/* ---- toasts (sustituyen a alert()) ---- */
+.toast-container{
+  position:absolute;
+  left:16px; right:16px;
+  bottom:calc(86px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:8px;
+  align-items:center;
+  pointer-events:none;
+  z-index:50;
+}
+.toast{
+  max-width:100%;
+  padding:12px 16px;
+  border-radius:12px;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:'Inter',sans-serif;
+  font-size:13.5px;
+  line-height:1.4;
+  box-shadow:0 8px 20px rgba(31,42,36,.25);
+  opacity:0; transform:translateY(10px);
+  transition:opacity .2s ease, transform .2s ease;
+  pointer-events:auto;
+  cursor:pointer;
+}
+.toast.show{ opacity:1; transform:translateY(0); }
+.toast.hide{ opacity:0; transform:translateY(6px); }
+.toast-error{ background:var(--expense); }
+.toast-ok{ background:var(--income); }
