@@ -51,6 +51,8 @@ const App = (function () {
     AppData.init()
       .then(() => {
         Movimientos.init();
+        const aviso = document.getElementById('cierreWarning');
+        if (aviso) aviso.classList.toggle('hidden', !AppData.getCierreDesactualizado());
       })
       .catch((err) => {
         console.error('No se pudieron cargar los datos:', err);
