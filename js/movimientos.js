@@ -9,19 +9,6 @@
 
 const Movimientos = (function () {
 
-  const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  const MESES_ABREV = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-  function formatMoney(valor) {
-    return valor.toFixed(2).replace('.', ',') + ' €';
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
   function getTodayISO() {
     const hoy = new Date();
     const offset = hoy.getTimezoneOffset() * 60000;
@@ -36,7 +23,7 @@ const Movimientos = (function () {
 
     const balanceEl = document.getElementById('balanceAmount');
     if (balanceEl) {
-      balanceEl.textContent = (saldoActual >= 0 ? '+' : '') + formatMoney(saldoActual);
+      balanceEl.textContent = (saldoActual >= 0 ? '+' : '') + UIHelpers.formatMoney(saldoActual);
       balanceEl.classList.toggle('positive', saldoActual >= 0);
     }
 
@@ -50,22 +37,18 @@ const Movimientos = (function () {
 
     const subEl = document.querySelector('.balance-sub');
     if (subEl) {
-      subEl.textContent = `Ingresos ${formatMoney(ingresosMes)} · Gastos ${formatMoney(gastosMes)}`;
+      subEl.textContent = `Ingresos ${UIHelpers.formatMoney(ingresosMes)} · Gastos ${UIHelpers.formatMoney(gastosMes)}`;
     }
 
     const eyebrowEl = document.querySelector('.cover-eyebrow');
     if (eyebrowEl) {
-      eyebrowEl.textContent = `Libro de cuentas · ${capitalize(MESES[hoy.getMonth()])} ${hoy.getFullYear()}`;
+      eyebrowEl.textContent = `Libro de cuentas · ${UIHelpers.MESES_LARGO[hoy.getMonth()]} ${hoy.getFullYear()}`;
     }
 
     const ledgerMonthEl = document.querySelector('.ledger-heading span');
     if (ledgerMonthEl) {
-      ledgerMonthEl.textContent = `${MESES_ABREV[hoy.getMonth()]} ${hoy.getFullYear()}`;
+      ledgerMonthEl.textContent = `${UIHelpers.MESES_ABREV[hoy.getMonth()].toLowerCase()} ${hoy.getFullYear()}`;
     }
-  }
-
-  function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
   function resetDateField() {
@@ -77,7 +60,7 @@ const Movimientos = (function () {
     const select = document.getElementById('categorySelect');
     if (!select) return;
     const opciones = AppData.getCategoriasParaGasto()
-      .map(c => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}</option>`)
+      .map(c => `<option value="${UIHelpers.escapeHtml(c.nombre)}">${UIHelpers.escapeHtml(c.nombre)}</option>`)
       .join('');
     select.innerHTML = `<option value="" disabled selected>Selecciona una categoría</option>` + opciones;
   }
@@ -96,10 +79,10 @@ const Movimientos = (function () {
       <div class="ledger-row">
         <span class="cat-icon">${CategoryIcons.render(m.cat)}</span>
         <div class="ledger-main">
-          <div class="ledger-desc">${escapeHtml(m.desc)}</div>
-          <div class="ledger-cat">${escapeHtml(m.cat)}</div>
+          <div class="ledger-desc">${UIHelpers.escapeHtml(m.desc)}</div>
+          <div class="ledger-cat">${UIHelpers.escapeHtml(m.cat)}</div>
         </div>
-        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${formatMoney(m.importe)}</div>
+        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${UIHelpers.formatMoney(m.importe)}</div>
         <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
       </div>
     `).join('');
@@ -117,13 +100,13 @@ const Movimientos = (function () {
         ${meses.map(m => `
           <div class="upcoming-month-card">
             <div class="upcoming-month-name">${m.mes} ${m.anio}</div>
-            <div class="upcoming-month-total">${formatMoney(m.total)}</div>
+            <div class="upcoming-month-total">${UIHelpers.formatMoney(m.total)}</div>
             ${m.categorias.length === 0
               ? '<div class="upcoming-empty">Sin gastos fijos</div>'
               : m.categorias.map(c => `
                   <div class="upcoming-cat-row">
                     <span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>
-                    <span class="upcoming-cat-name">${escapeHtml(c.nombre)}</span>
+                    <span class="upcoming-cat-name">${UIHelpers.escapeHtml(c.nombre)}</span>
                     <span class="upcoming-cat-amt">${c.presupuesto} €</span>
                   </div>
                 `).join('')
