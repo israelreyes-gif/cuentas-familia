@@ -39,6 +39,7 @@ html,body{
   position:relative;
   flex:1;
   overflow:hidden;
+  perspective:1100px;
 }
 .view{
   position:absolute;
@@ -50,12 +51,32 @@ html,body{
   transform:translateY(8px);
   pointer-events:none;
   transition:opacity .18s ease, transform .18s ease;
+  background:var(--paper);
 }
 .view.active{
   opacity:1;
   transform:translateY(0);
   pointer-events:auto;
   z-index:1;
+}
+
+/*
+ * Pase de página: lo activa App.showTab() al cambiar de pestaña por el
+ * menú inferior (Movimiento/Categorías/Gráfica). Sustituye temporalmente
+ * la transición corta de arriba por un giro 3D de 1s con sombreado, y se
+ * limpia solo al terminar. El resto de cambios de vista (login→app,
+ * Administrar↔Volver dentro de Categorías) siguen usando el fundido de
+ * siempre, sin tocar nada de esto.
+ */
+.view.flip{
+  transition:transform 1s cubic-bezier(.45,.05,.35,1), opacity 1s cubic-bezier(.45,.05,.35,1);
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  box-shadow:0 0 24px rgba(0,0,0,.2);
+}
+.page-shade,.page-shade-incoming{
+  position:absolute; inset:0; pointer-events:none; opacity:0;
+  transition:opacity 1s cubic-bezier(.45,.05,.35,1);
 }
 
 .view-header{
