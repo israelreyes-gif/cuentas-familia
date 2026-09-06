@@ -8,16 +8,6 @@
 
 const Categorias = (function () {
 
-  function formatMoney(valor) {
-    return valor.toFixed(2).replace('.', ',') + ' €';
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
   const RECURRENCIA_LABEL = {
     mensual: 'Mensual',
     bimestral: 'Bimestral',
@@ -26,11 +16,10 @@ const Categorias = (function () {
     semestral: 'Semestral',
     anual: 'Anual',
   };
-  const MESES_ABREV = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
   function fijaTagLabel(c) {
     if (c.recurrencia && c.recurrencia !== 'mensual') {
-      const mes = MESES_ABREV[(c.mes_inicio || 1) - 1];
+      const mes = UIHelpers.MESES_ABREV[(c.mes_inicio || 1) - 1];
       return `Fija · ${RECURRENCIA_LABEL[c.recurrencia]} (${mes})`;
     }
     return 'Fija';
@@ -50,8 +39,8 @@ const Categorias = (function () {
         return `
           <div class="cat-row">
             <div class="cat-top">
-              <div class="cat-name"><span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>${escapeHtml(c.nombre)}${c.fija ? ` <span class="fija-tag">${fijaTagLabel(c)}</span>` : ''}</div>
-              <div class="cat-nums">${formatMoney(c.gastado)} ${sinPresupuesto ? '· sin presupuesto' : '/ ' + c.presupuesto + ' €'}</div>
+              <div class="cat-name"><span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>${UIHelpers.escapeHtml(c.nombre)}${c.fija ? ` <span class="fija-tag">${fijaTagLabel(c)}</span>` : ''}</div>
+              <div class="cat-nums">${UIHelpers.formatMoney(c.gastado)} ${sinPresupuesto ? '· sin presupuesto' : '/ ' + c.presupuesto + ' €'}</div>
             </div>
             <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
           </div>
@@ -66,10 +55,9 @@ const Categorias = (function () {
     const el = document.getElementById('monthTotalAmt');
     if (!el) return;
     const total = (cats || AppData.getCategoriasConGasto()).reduce((sum, c) => sum + c.gastado, 0);
-    el.textContent = formatMoney(total);
+    el.textContent = UIHelpers.formatMoney(total);
   }
 
-  const MESES_LARGO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const RECURRENCIAS = [
     { value: 'mensual', label: 'Mes (mensual)' },
     { value: 'bimestral', label: '2 meses (bimestral)' },
@@ -80,7 +68,7 @@ const Categorias = (function () {
   ];
 
   function buildMesInicioOptions(seleccionado) {
-    return MESES_LARGO.map((nombre, i) => {
+    return UIHelpers.MESES_LARGO.map((nombre, i) => {
       const valor = i + 1;
       return `<option value="${valor}" ${valor === seleccionado ? 'selected' : ''}>${nombre}</option>`;
     }).join('');
@@ -106,7 +94,7 @@ const Categorias = (function () {
       <div class="manage-row">
         <span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>
         <span class="name">
-          ${escapeHtml(c.nombre)}<br>
+          ${UIHelpers.escapeHtml(c.nombre)}<br>
           <span class="count">${c.movimientos} mov.</span>
           <label class="fija-check">
             <input type="checkbox" ${c.fija ? 'checked' : ''}
@@ -233,7 +221,7 @@ const Categorias = (function () {
       <div class="reassign-row">
         <span class="reassign-note">${count} movimiento(s). Mover a:</span>
         <select class="reassign-select">
-          ${otras.map(c => `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('')}
+          ${otras.map(c => `<option value="${c.id}">${UIHelpers.escapeHtml(c.nombre)}</option>`).join('')}
         </select>
         <button class="reassign-confirm" onclick="Categorias.confirmReassignDelete(${id}, this)">Mover y borrar</button>
         <button class="reassign-cancel" onclick="Categorias.cancelReassign(this)">Cancelar</button>
