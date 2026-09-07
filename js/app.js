@@ -63,6 +63,29 @@ const App = (function () {
       });
   }
 
+  function recalcularCierre() {
+    const btn = document.getElementById('cierreWarningBtn');
+    const aviso = document.getElementById('cierreWarning');
+
+    UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
+
+    AppData.forzarCierreMes()
+      .then(() => {
+        const sigueDesactualizado = AppData.getCierreDesactualizado();
+        if (aviso) aviso.classList.toggle('hidden', !sigueDesactualizado);
+        if (!sigueDesactualizado) {
+          UIHelpers.showToast('Saldo recalculado correctamente.', 'ok');
+        }
+        Movimientos.renderHeader();
+      })
+      .catch((err) => {
+        UIHelpers.showToast(err.message || 'No se pudo recalcular el saldo.');
+      })
+      .finally(() => {
+        UIHelpers.setButtonLoading(btn, false);
+      });
+  }
+
   function init() {
     bindBottomNav();
     registerServiceWorker();
@@ -73,6 +96,7 @@ const App = (function () {
     init,
     showTab,
     startApp,
+    recalcularCierre,
   };
 
 })();
