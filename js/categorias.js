@@ -90,11 +90,13 @@ const Categorias = (function () {
       return;
     }
 
-    el.innerHTML = lista.map(c => `
-      <div class="manage-row">
+    el.innerHTML = lista.map(c => {
+      const sinPresupuesto = c.fija && (!c.presupuesto || c.presupuesto <= 0);
+      return `
+      <div class="manage-row ${sinPresupuesto ? 'sin-presupuesto' : ''}">
         <span class="cat-icon">${CategoryIcons.render(c.nombre)}</span>
         <span class="name">
-          ${UIHelpers.escapeHtml(c.nombre)}<br>
+          ${UIHelpers.escapeHtml(c.nombre)}${sinPresupuesto ? ' <span class="warn-icon" title="Fija sin presupuesto: no se generará">⚠</span>' : ''}<br>
           <span class="count">${c.movimientos} mov.</span>
           <label class="fija-check">
             <input type="checkbox" ${c.fija ? 'checked' : ''}
@@ -127,7 +129,8 @@ const Categorias = (function () {
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   function showCatScreen(which) {
@@ -169,6 +172,10 @@ const Categorias = (function () {
     const fija = fijaInput ? fijaInput.checked : false;
     const mesInicio = fija && mesInicioInput ? Number(mesInicioInput.value) : undefined;
     const recurrencia = fija && recurrenciaInput ? recurrenciaInput.value : undefined;
+
+    if (fija && presupuesto <= 0) {
+      UIHelpers.showToast('Una categoría fija necesita un presupuesto mayor que 0 para generarse cada mes.');
+    }
 
     UIHelpers.setButtonLoading(btn, true, '<span class="spinner"></span>');
 
@@ -262,7 +269,12 @@ const Categorias = (function () {
   function updateBudget(id, valor, inputEl) {
     UIHelpers.withFieldLoading(inputEl, 300, () => {});
     AppData.updateCategoriaPresupuesto(id, parseFloat(valor))
-      .then(() => {
+      .then((cat) => {
+        const row = inputEl.closest('.manage-row');
+        if (row && cat) {
+          const sinPresupuesto = cat.fija && (!cat.presupuesto || cat.presupuesto <= 0);
+          row.classList.toggle('sin-presupuesto', !!sinPresupuesto);
+        }
         renderSpendList();
         Movimientos.renderUpcomingFixed();
       })
@@ -274,9 +286,17 @@ const Categorias = (function () {
   function toggleFija(id, checked, checkboxEl) {
     checkboxEl.disabled = true;
     AppData.updateCategoriaFija(id, checked)
-      .then(() => {
-        const wrap = checkboxEl.closest('.manage-row').querySelector('.recur-wrap');
+      .then((cat) => {
+        const row = checkboxEl.closest('.manage-row');
+        const wrap = row.querySelector('.recur-wrap');
         if (wrap) wrap.classList.toggle('open', checked);
+
+        const sinPresupuesto = checked && cat && (!cat.presupuesto || cat.presupuesto <= 0);
+        row.classList.toggle('sin-presupuesto', !!sinPresupuesto);
+        if (sinPresupuesto) {
+          UIHelpers.showToast('Una categoría fija necesita un presupuesto mayor que 0 para generarse cada mes.');
+        }
+
         Movimientos.renderCategorySelect();
         Movimientos.renderUpcomingFixed();
       })
