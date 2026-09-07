@@ -64,6 +64,9 @@ export default {
       if (path === '/api/config' && method === 'GET') {
         return await getConfig(env);
       }
+      if (path === '/api/config/cerrar-mes' && method === 'POST') {
+        return await forzarCierreMes(env);
+      }
 
       if (path === '/api/categorias' && method === 'GET') {
         return await getCategorias(env);
@@ -142,6 +145,18 @@ async function getConfig(env) {
  */
 async function cerrarMesAnterior(env) {
   const hoy = new Date();
+
+  // Si ya se cerró el mes en lo que va de este mes actual, no repetir — evita
+  // que una segunda ejecución (botón manual pulsado dos veces, o un reintento
+  // del cron) sume el mismo mes anterior otra vez y descuadre el saldo.
+  const configActual = await env.DB.prepare("SELECT actualizado_en FROM config WHERE clave = 'saldo_inicial'").first();
+  if (configActual && configActual.actualizado_en) {
+    const f = new Date(configActual.actualizado_en);
+    if (f.getUTCFullYear() === hoy.getUTCFullYear() && f.getUTCMonth() === hoy.getUTCMonth()) {
+      return;
+    }
+  }
+
   const inicioMesAnterior = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
   const inicioMesActual = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1)).toISOString().slice(0, 10);
 
@@ -159,6 +174,12 @@ async function cerrarMesAnterior(env) {
     INSERT INTO config (clave, valor, actualizado_en) VALUES ('saldo_inicial', ?, ?)
     ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, actualizado_en = excluded.actualizado_en
   `).bind(String(nuevoSaldo), new Date().toISOString()).run();
+}
+
+/** Ruta manual: recalcula el saldo si (y solo si) el cierre de este mes no se ha hecho todavía. */
+async function forzarCierreMes(env) {
+  await cerrarMesAnterior(env);
+  return await getConfig(env);
 }
 
 async function generarGastosFijos(env) {
