@@ -91,6 +91,18 @@ const AppData = (function () {
     return !(f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth());
   }
 
+  /**
+   * Pide al servidor que recalcule el cierre de mes ahora mismo. Es segura
+   * de llamar aunque ya esté al día (el backend no hace nada en ese caso),
+   * así que se puede pulsar el botón las veces que haga falta sin riesgo
+   * de duplicar el efecto en el saldo.
+   */
+  async function forzarCierreMes() {
+    const config = await apiFetch('/api/config/cerrar-mes', { method: 'POST' });
+    saldoInicial = Number(config.saldo_inicial) || 0;
+    saldoActualizadoEn = config.saldo_actualizado_en || null;
+  }
+
   /** Saldo acumulado real: saldo inicial + todos los ingresos - todos los gastos, desde siempre. */
   function getSaldoActual() {
     const totalIngresos = movimientos.filter(m => m.tipo === 'income').reduce((sum, m) => sum + m.importe, 0);
@@ -368,6 +380,7 @@ const AppData = (function () {
     init,
     getSaldoInicial,
     getCierreDesactualizado,
+    forzarCierreMes,
     getSaldoActual,
     getMovimientos,
     addMovimiento,
