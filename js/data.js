@@ -8,8 +8,8 @@
 
 const AppData = (function () {
 
-  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
-
+  const API_BASE = 'https://israelreyes-proxy.netlify.app/cuentas-familia';
+  
   let movimientos = [];
   let categorias = [];
   let saldoInicial = 0;
