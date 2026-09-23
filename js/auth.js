@@ -8,7 +8,7 @@
 
 const Auth = (function () {
 
-  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
+  const API_BASE = 'https://israelreyes-proxy.netlify.app/cuentas-familia';
   const TOKEN_KEY = 'cuentas_casa_token';
 
   let onSuccessCallback = null;
