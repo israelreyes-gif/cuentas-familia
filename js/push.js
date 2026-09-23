@@ -9,8 +9,9 @@
 const Push = (function () {
 
   const VAPID_PUBLIC_KEY = 'BImfwk2vgsDeU6EWmQVYAGFX-_7J3AiQoVYc31xWYtSSX5OzwX41WL9qNqE_ZGiRNk3UoNv0FviPDncKmGiWtaQ';
-  const API_BASE = 'https://api-proxy.israelreyes-gif.deno.net/cuentas-familia';
+  const API_BASE = 'https://israelreyes-proxy.netlify.app/cuentas-familia';
 
+  
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
