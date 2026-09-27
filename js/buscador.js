@@ -42,14 +42,23 @@ const Buscador = (function () {
 
     if (lista.length === 0) {
       el.innerHTML = '<div class="empty-note">No se han encontrado movimientos.</div>';
-      if (resumen) resumen.textContent = '';
+      if (resumen) resumen.innerHTML = '';
       return;
     }
 
     if (resumen) {
-      resumen.textContent = lista.length >= 100
+      const textoResultados = lista.length >= 100
         ? 'Mostrando los 100 resultados más recientes'
         : `${lista.length} resultado${lista.length === 1 ? '' : 's'}`;
+
+      const suma = lista.reduce((acc, m) => acc + (m.tipo === 'income' ? m.importe : -m.importe), 0);
+      const claseSuma = suma < 0 ? 'expense' : 'income';
+      const signo = suma < 0 ? '−' : (suma > 0 ? '+' : '');
+
+      resumen.innerHTML = `
+        <span>${textoResultados}</span>
+        <span class="search-summary-amt ${claseSuma}">Suma: ${signo} ${UIHelpers.formatMoney(Math.abs(suma))}</span>
+      `;
     }
 
     el.innerHTML = lista.map(m => `
