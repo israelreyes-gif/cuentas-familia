@@ -9,4 +9,15 @@
   font-size:11px;
   color:var(--ink-soft);
   margin:18px 0 8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:10px;
 }
+.search-summary-amt{
+  font-weight:600;
+  font-size:12px;
+  white-space:nowrap;
+}
+.search-summary-amt.income{color:var(--income);}
+.search-summary-amt.expense{color:var(--expense);}
