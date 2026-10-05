@@ -70,9 +70,47 @@ const Movimientos = (function () {
     return `${f.getDate()} ${UIHelpers.MESES_ABREV[f.getMonth()].toLowerCase()}`;
   }
 
+  /** Línea nueva bajo los contadores del encabezado: suma de los gastos fijos del mes aún sin marcar. */
+  function renderFijosPendientes() {
+    const el = document.getElementById('fijosPendientes');
+    if (!el) return;
+
+    const resumen = AppData.getResumenFijos();
+    if (resumen.total === 0) {
+      el.classList.add('hidden');
+      el.textContent = '';
+      return;
+    }
+
+    el.classList.remove('hidden');
+    el.classList.toggle('todo-ok', resumen.pendientes === 0);
+    el.textContent = resumen.pendientes === 0
+      ? '✓ Todos los fijos ya pasados'
+      : `Fijos sin pasar: ${UIHelpers.formatMoney(resumen.importePendiente)} (${resumen.pendientes})`;
+  }
+
+  function togglePasado(id, btn) {
+    const mov = AppData.getMovimientos().find(m => m.id === id);
+    if (!mov) return;
+
+    const nuevoEstado = !mov.pasado;
+    btn.disabled = true;
+
+    AppData.marcarPasado(id, nuevoEstado)
+      .then(() => {
+        renderLedgerList();
+      })
+      .catch((err) => {
+        btn.disabled = false;
+        UIHelpers.showToast(err.message || 'No se pudo actualizar el movimiento.');
+      });
+  }
+
   function renderLedgerList() {
     const list = document.getElementById('ledgerList');
     if (!list) return;
+
+    renderFijosPendientes();
 
     const movimientos = AppData.getMovimientos();
     if (movimientos.length === 0) {
@@ -87,6 +125,12 @@ const Movimientos = (function () {
           <div class="ledger-desc">${UIHelpers.escapeHtml(m.desc)}</div>
           <div class="ledger-cat">${UIHelpers.escapeHtml(m.cat)} · ${formatFechaCorta(m.fecha)}</div>
         </div>
+        ${AppData.esGastoFijo(m) ? `
+          <button class="fijo-check ${m.pasado ? 'checked' : ''}" onclick="Movimientos.togglePasado(${m.id}, this)"
+            aria-pressed="${m.pasado ? 'true' : 'false'}" aria-label="${m.pasado ? 'Marcado como pasado a la cuenta' : 'Marcar como pasado a la cuenta'}">
+            <span class="fijo-check-box">${m.pasado ? '✓' : ''}</span>
+          </button>
+        ` : ''}
         <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${UIHelpers.formatMoney(m.importe)}</div>
         <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
       </div>
@@ -222,6 +266,8 @@ const Movimientos = (function () {
     renderCategorySelect,
     renderHeader,
     renderUpcomingFixed,
+    renderFijosPendientes,
+    togglePasado,
     resetDateField,
     setType,
     saveMovement,
