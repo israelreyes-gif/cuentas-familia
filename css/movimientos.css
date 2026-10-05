@@ -49,6 +49,8 @@
 }
 .fijo-check.checked .fijo-check-box{background:var(--income);border-color:var(--income);}
 .fijo-check:disabled{opacity:.5;cursor:default;}
+/* hueco con el mismo ancho que el check (22px + 4px + 4px de padding), para que los importes queden alineados en todas las filas */
+.fijo-check-spacer{width:30px;flex-shrink:0;}
 
 /* ---- próximos gastos fijos (2 meses vista) ---- */
 .upcoming-fixed{margin:22px 0 4px;}
