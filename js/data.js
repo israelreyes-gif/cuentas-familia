@@ -9,6 +9,7 @@
 const AppData = (function () {
 
   const API_BASE = 'https://israelreyes-proxy.netlify.app/cuentas-familia';
+  const DESC_GASTO_FIJO = 'Gasto fijo'; // misma descripción que usa el Worker al generarlos
   
   let movimientos = [];
   let categorias = [];
@@ -154,6 +155,44 @@ const AppData = (function () {
         }
       }
     }
+  }
+
+  /** Gastos fijos del mes en curso (los que genera solo el cron del día 1). */
+  function esGastoFijo(m) {
+    return m.tipo === 'expense' && m.desc === DESC_GASTO_FIJO;
+  }
+
+  /**
+   * Marca o desmarca un movimiento como "ya pasado a la cuenta". Se refleja
+   * en pantalla al instante y, si el servidor falla, se deshace.
+   */
+  async function marcarPasado(id, pasado) {
+    const mov = movimientos.find(m => m.id === id);
+    if (!mov) return;
+
+    const anterior = mov.pasado ? 1 : 0;
+    mov.pasado = pasado ? 1 : 0;
+
+    try {
+      await apiFetch('/api/movimientos/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify({ pasado: !!pasado }),
+      });
+    } catch (err) {
+      mov.pasado = anterior;
+      throw err;
+    }
+  }
+
+  /** Resumen de los gastos fijos del mes: cuántos hay, cuántos faltan por marcar y cuánto suman los que faltan. */
+  function getResumenFijos() {
+    const fijos = movimientos.filter(esGastoFijo);
+    const sinMarcar = fijos.filter(m => !m.pasado);
+    return {
+      total: fijos.length,
+      pendientes: sinMarcar.length,
+      importePendiente: sinMarcar.reduce((sum, m) => sum + m.importe, 0),
+    };
   }
 
   function getCategorias() {
@@ -385,6 +424,9 @@ const AppData = (function () {
     getMovimientos,
     addMovimiento,
     deleteMovimiento,
+    esGastoFijo,
+    marcarPasado,
+    getResumenFijos,
     getCategorias,
     getCategoriasConGasto,
     getCategoriasOrdenadas,
