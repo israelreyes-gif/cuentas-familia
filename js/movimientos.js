@@ -106,13 +106,29 @@ const Movimientos = (function () {
       });
   }
 
+  /**
+   * Orden de la lista: por fecha (más reciente primero). Dentro de un mismo
+   * día, primero los movimientos normales (el último añadido arriba) y
+   * después los gastos fijos, por orden alfabético de categoría.
+   */
+  function ordenarParaLista(lista) {
+    return [...lista].sort((a, b) => {
+      if (a.fecha !== b.fecha) return a.fecha < b.fecha ? 1 : -1;
+      const fijoA = AppData.esGastoFijo(a);
+      const fijoB = AppData.esGastoFijo(b);
+      if (fijoA !== fijoB) return fijoA ? 1 : -1;
+      if (fijoA && fijoB) return a.cat.localeCompare(b.cat, 'es');
+      return b.id - a.id;
+    });
+  }
+
   function renderLedgerList() {
     const list = document.getElementById('ledgerList');
     if (!list) return;
 
     renderFijosPendientes();
 
-    const movimientos = AppData.getMovimientos();
+    const movimientos = ordenarParaLista(AppData.getMovimientos());
     if (movimientos.length === 0) {
       list.innerHTML = '<div class="empty-note">Todavía no hay movimientos.</div>';
       return;
@@ -125,13 +141,13 @@ const Movimientos = (function () {
           <div class="ledger-desc">${UIHelpers.escapeHtml(m.desc)}</div>
           <div class="ledger-cat">${UIHelpers.escapeHtml(m.cat)} · ${formatFechaCorta(m.fecha)}</div>
         </div>
+        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${UIHelpers.formatMoney(m.importe)}</div>
         ${AppData.esGastoFijo(m) ? `
           <button class="fijo-check ${m.pasado ? 'checked' : ''}" onclick="Movimientos.togglePasado(${m.id}, this)"
             aria-pressed="${m.pasado ? 'true' : 'false'}" aria-label="${m.pasado ? 'Marcado como pasado a la cuenta' : 'Marcar como pasado a la cuenta'}">
             <span class="fijo-check-box">${m.pasado ? '✓' : ''}</span>
           </button>
-        ` : ''}
-        <div class="ledger-amt ${m.tipo}">${m.tipo === 'income' ? '+' : '−'} ${UIHelpers.formatMoney(m.importe)}</div>
+        ` : '<span class="fijo-check-spacer"></span>'}
         <button class="ledger-delete" onclick="Movimientos.deleteMovement(${m.id}, this)" aria-label="Eliminar movimiento">✕</button>
       </div>
     `).join('');
