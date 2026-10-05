@@ -101,6 +101,9 @@ export default {
       if (movMatch && method === 'DELETE') {
         return await deleteMovimiento(Number(movMatch[1]), env);
       }
+      if (movMatch && method === 'PATCH') {
+        return await marcarMovimientoPasado(Number(movMatch[1]), request, env);
+      }
 
       return error('Ruta no encontrada', 404);
     } catch (err) {
@@ -532,7 +535,8 @@ async function getMovimientos(env) {
       c.nombre AS cat,
       m.tipo,
       m.importe,
-      m.fecha
+      m.fecha,
+      m.pasado
     FROM movimientos m
     JOIN categorias c ON c.id = m.categoria_id
     WHERE strftime('%Y-%m', m.fecha) = strftime('%Y-%m','now')
@@ -666,7 +670,20 @@ async function createMovimiento(request, env) {
     tipo,
     importe,
     fecha,
+    pasado: 0,
   }, 201);
+}
+
+/**
+ * Marca (o desmarca) un movimiento como "ya pasado a la cuenta". Solo es
+ * un aviso visual para el usuario: no afecta al saldo ni a ningún contador.
+ */
+async function marcarMovimientoPasado(id, request, env) {
+  const body = await request.json();
+  const pasado = body.pasado ? 1 : 0;
+  const result = await env.DB.prepare('UPDATE movimientos SET pasado = ? WHERE id = ?').bind(pasado, id).run();
+  if (result.meta.changes === 0) return error('Movimiento no encontrado', 404);
+  return json({ id, pasado });
 }
 
 async function deleteMovimiento(id, env) {
