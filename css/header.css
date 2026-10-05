@@ -35,6 +35,8 @@
 }
 .balance-amount.positive{color:#7FDCAE;}
 .balance-sub{font-size:12px;color:#9AA69C;margin-top:2px;}
+.fijos-pendientes{font-size:12px;color:var(--gold);margin-top:2px;font-weight:600;}
+.fijos-pendientes.todo-ok{color:#7FDCAE;}
 
 .cierre-warning{
   background:var(--expense);
